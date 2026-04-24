@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>J.A.R.V.I.S. — Web</title>
+<style>
+  :root {
+    --cyan: #38e8ff;
+    --cyan-dim: #1a7a8c;
+    --bg: #020611;
+    --bg2: #061226;
+    --text: #cfeefd;
+    --dim: #5a8296;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 40%, #082035 0%, var(--bg) 70%);
+    color: var(--text);
+    font-family: "Segoe UI", "SF Pro Display", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    gap: 18px;
+  }
+  h1 {
+    margin: 0;
+    letter-spacing: 0.5em;
+    font-size: clamp(18px, 2.5vw, 26px);
+    color: var(--cyan);
+    text-shadow: 0 0 14px rgba(56,232,255,.6);
+    font-weight: 300;
+  }
+  .sub { color: var(--dim); font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; }
+
+  /* Arc reactor */
+  .reactor {
+    position: relative;
+    width: min(46vmin, 320px);
+    height: min(46vmin, 320px);
+    margin: 6px 0;
+  }
+  .ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(56,232,255,.25);
+    box-shadow: 0 0 30px rgba(56,232,255,.15) inset;
+  }
+  .ring.r2 { inset: 8%; border-color: rgba(56,232,255,.4); animation: spin 18s linear infinite; border-style: dashed; }
+  .ring.r3 { inset: 18%; border-color: rgba(56,232,255,.55); animation: spin 10s linear infinite reverse; }
+  .ring.r4 {
+    inset: 30%;
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 40px var(--cyan), 0 0 80px rgba(56,232,255,.35), 0 0 0 3px rgba(56,232,255,.1) inset;
+  }
+  .core {
+    position: absolute; inset: 40%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #bffaff 0%, var(--cyan) 40%, #0a4758 100%);
+    box-shadow: 0 0 50px var(--cyan), 0 0 100px rgba(56,232,255,.6);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); opacity: 1; }
+    50%     { transform: scale(1.08); opacity: .88; }
+  }
+
+  /* Level meter */
+  .level {
+    width: min(80vw, 520px);
+    height: 8px;
+    background: rgba(56,232,255,.08);
+    border-radius: 99px;
+    overflow: hidden;
+    border: 1px solid rgba(56,232,255,.15);
+  }
+  .level > span {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+    box-shadow: 0 0 12px var(--cyan);
+    transition: width 80ms linear;
+  }
+
+  /* Status */
+  #status {
+    font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--cyan);
+    min-height: 18px;
+  }
+
+  /* Transcript */
+  #log {
+    width: min(90vw, 640px);
+    max-height: 28vh;
+    overflow-y: auto;
+    background: rgba(6,18,38,.6);
+    border: 1px solid rgba(56,232,255,.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    backdrop-filter: blur(6px);
+  }
+  #log .u { color: #8bd4ff; }
+  #log .j { color: #a8ffd6; }
+  #log .i { color: #456674; font-style: italic; }
+  #log .e { color: #ff7a7a; }
+  #log p { margin: 4px 0; }
+
+  /* Controls */
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: rgba(56,232,255,.08);
+    color: var(--cyan);
+    border: 1px solid rgba(56,232,255,.4);
+    padding: 10px 18px;
+    border-radius: 99px;
+    letter-spacing: 0.15em;
+    font-size: 12px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  button:hover { background: rgba(56,232,255,.18); box-shadow: 0 0 20px rgba(56,232,255,.3); }
+  button.off { color: #ff9090; border-color: rgba(255,120,120,.5); }
+
+  .hint { color: var(--dim); font-size: 12px; text-align: center; max-width: 600px; }
+
+  /* Unsupported banner */
+  #unsupported {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(2,6,17,.95);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 30px; text-align: center;
+  }
+  #unsupported.show { display: flex; }
+  #unsupported h2 { color: var(--cyan); }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <h1>J · A · R · V · I · S</h1>
+  <div class="sub">voice · web · edition</div>
+
+  <div class="reactor">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="ring r4"></div>
+    <div class="core"></div>
+  </div>
+
+  <div class="level"><span id="lvl"></span></div>
+  <div id="status">initializing</div>
+
+  <div class="row">
+    <button id="mic">mic on</button>
+    <button id="start">start listening</button>
+  </div>
+
+  <div id="log"></div>
+  <div class="hint">
+    Say <b>"Jarvis, open YouTube"</b>, <b>"Jarvis, what is gravity"</b>, <b>"Jarvis, what time is it"</b>, or <b>"Jarvis, search for cats"</b>.
+    Works in any Chromium browser (Quest, Chrome, Edge). Requires a mic.
+  </div>
+</div>
+
+<div id="unsupported">
+  <h2>Your browser can't do speech</h2>
+  <p>This page uses the Web Speech API. Open it in Chrome, Edge, or the Meta Quest browser.</p>
+  <p style="color:var(--dim)">iOS Safari / Firefox: not supported.</p>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const log = $("log");
+  const status = $("status");
+  const lvl = $("lvl");
+  const micBtn = $("mic");
+  const startBtn = $("start");
+
+  const setStatus = s => status.textContent = s;
+  const add = (cls, text) => {
+    const p = document.createElement("p");
+    p.className = cls;
+    p.textContent = text;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+  };
+
+  // ---------- SPEECH RECOGNITION ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { $("unsupported").classList.add("show"); return; }
+
+  const recog = new SR();
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.lang = "en-US";
+
+  let running = false;
+  let enabled = true;
+  let speaking = false;
+  let muteUntil = 0;
+
+  const WAKE = ["hey jarvis","ok jarvis","okay jarvis","jarvis","jervis","jarvi","service","travis","charles","harvey"];
+
+  function stripWake(text) {
+    const t = text.trim().toLowerCase().replace(/^[,.\s]+/, "");
+    for (const w of WAKE.sort((a,b)=>b.length-a.length)) {
+      if (t === w) return { cmd: "", matched: true };
+      if (t.startsWith(w + " ") || t.startsWith(w + ",") || t.startsWith(w + ".")) {
+        return { cmd: t.slice(w.length).replace(/^[\s,.?!]+/, ""), matched: true };
+      }
+    }
+    return { cmd: text, matched: false };
+  }
+
+  // ---------- TEXT-TO-SPEECH ----------
+  const synth = window.speechSynthesis;
+  function say(text) {
+    if (!text) return;
+    try {
+      speaking = true;
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05;
+      u.pitch = 0.95;
+      // prefer a British / male voice if available
+      const voices = synth.getVoices();
+      const pref = voices.find(v => /UK|British|Daniel|Oliver|Google UK English Male/i.test(v.name))
+                || voices.find(v => /male/i.test(v.name))
+                || voices[0];
+      if (pref) u.voice = pref;
+      u.onend = () => {
+        speaking = false;
+        muteUntil = performance.now() + 1200;
+      };
+      synth.cancel();
+      synth.speak(u);
+    } catch(e) { console.warn(e); }
+  }
+
+  // ---------- AUDIO LEVEL METER ----------
+  let audioCtx, analyser, rafId;
+  async function startLevelMeter() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v*v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        lvl.style.width = Math.min(100, rms * 260) + "%";
+        rafId = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch(e) {
+      add("e", "Mic blocked. Allow microphone in browser settings.");
+      setStatus("mic blocked");
+    }
+  }
+
+  // ---------- COMMAND ROUTER ----------
+  const SITES = {
+    youtube: "https://youtube.com", yt: "https://youtube.com",
+    google: "https://google.com",
+    gmail: "https://mail.google.com", mail: "https://mail.google.com", email: "https://mail.google.com",
+    netflix: "https://netflix.com",
+    spotify: "https://open.spotify.com",
+    roblox: "https://www.roblox.com",
+    discord: "https://discord.com/app",
+    github: "https://github.com",
+    twitter: "https://twitter.com", x: "https://x.com",
+    reddit: "https://reddit.com",
+    instagram: "https://instagram.com",
+    tiktok: "https://tiktok.com",
+    amazon: "https://amazon.com",
+    wikipedia: "https://wikipedia.org",
+    twitch: "https://twitch.tv",
+    chatgpt: "https://chat.openai.com",
+    claude: "https://claude.ai",
+    maps: "https://maps.google.com",
+    translate: "https://translate.google.com",
+    whatsapp: "https://web.whatsapp.com",
+    facebook: "https://facebook.com",
+  };
+
+  function openSite(url, name) {
+    window.open(url, "_blank", "noopener");
+    return `Opening ${name}.`;
+  }
+
+  async function duckDuckGo(q) {
+    try {
+      const r = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1&skip_disambig=1`);
+      const j = await r.json();
+      if (j.AbstractText) return j.AbstractText;
+      if (j.Answer) return j.Answer;
+      if (j.Definition) return j.Definition;
+      if (j.RelatedTopics && j.RelatedTopics[0] && j.RelatedTopics[0].Text) return j.RelatedTopics[0].Text;
+    } catch(e) {}
+    return null;
+  }
+  async function wikipedia(q) {
+    try {
+      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}`);
+      if (!r.ok) return null;
+      const j = await r.json();
+      if (j.extract) return j.extract.split(". ").slice(0,2).join(". ") + ".";
+    } catch(e) {}
+    return null;
+  }
+
+  async function handle(cmd) {
+    cmd = cmd.trim().toLowerCase();
+    if (!cmd) { say("Yes?"); return; }
+
+    // Time / date
+    if (/\b(what(?:'s| is)?\s+(?:the\s+)?time|what time is it)\b/.test(cmd)) {
+      const t = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      return say(`It's ${t}.`);
+    }
+    if (/\b(what(?:'s| is)?\s+(?:the\s+)?date|what day is it|today'?s date)\b/.test(cmd)) {
+      const d = new Date().toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+      return say(`Today is ${d}.`);
+    }
+
+    // Open site
+    const m = cmd.match(/^(?:open|launch|go to|goto|navigate to)\s+(.+)$/);
+    if (m) {
+      const target = m[1].replace(/\.(com|org|net|io)$/, "").trim();
+      if (SITES[target]) return say(openSite(SITES[target], target));
+      // fuzzy
+      const key = Object.keys(SITES).find(k => target.includes(k) || k.includes(target));
+      if (key) return say(openSite(SITES[key], key));
+      // fall through to search
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(target)}`, "_blank", "noopener");
+      return say(`Searching for ${target}.`);
+    }
+
+    // Search
+    const sm = cmd.match(/^(?:search(?: for)?|google|find)\s+(.+)$/);
+    if (sm) {
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(sm[1])}`, "_blank", "noopener");
+      return say(`Searching for ${sm[1]}.`);
+    }
+
+    // Play (on YouTube)
+    const pm = cmd.match(/^(?:play)\s+(.+)$/);
+    if (pm) {
+      window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(pm[1])}`, "_blank", "noopener");
+      return say(`Searching YouTube for ${pm[1]}.`);
+    }
+
+    // Greeting
+    if (/^(hello|hi|hey|yo|sup)\b/.test(cmd)) return say("At your service.");
+    if (/how are you/.test(cmd)) return say("All systems nominal.");
+    if (/your name/.test(cmd)) return say("I am Jarvis.");
+    if (/thank you|thanks/.test(cmd)) return say("You're welcome.");
+
+    // Q&A
+    setStatus("thinking");
+    const q = cmd.replace(/^(what|who|where|when|why|how|tell me about|define)\s+(is|are|was|were)?\s*/, "").trim() || cmd;
+    const ans = (await duckDuckGo(q)) || (await wikipedia(q));
+    if (ans) return say(ans);
+
+    // Fallback → search
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(cmd)}`, "_blank", "noopener");
+    say(`Searching for ${cmd}.`);
+  }
+
+  // ---------- RECOGNITION EVENTS ----------
+  let lastFinal = "";
+  recog.onresult = (ev) => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const res = ev.results[i];
+      if (!res.isFinal) continue;
+      const text = res[0].transcript.trim();
+      if (!text || text === lastFinal) continue;
+      lastFinal = text;
+
+      if (speaking || performance.now() < muteUntil) continue;
+
+      const { cmd, matched } = stripWake(text);
+      if (!matched) {
+        add("i", "[ignored] " + text);
+        continue;
+      }
+      add("u", text);
+      if (!cmd) { say("Yes?"); continue; }
+      handle(cmd).catch(e => {
+        add("e", String(e));
+        say("Something went wrong.");
+      }).finally(() => setStatus(enabled ? "listening" : "idle"));
+    }
+  };
+
+  recog.onerror = (e) => {
+    if (e.error === "no-speech" || e.error === "aborted") return;
+    add("e", "recognition: " + e.error);
+    if (e.error === "not-allowed") {
+      setStatus("mic blocked");
+      add("e", "Allow microphone access in your browser.");
+    }
+  };
+
+  recog.onend = () => {
+    if (running && enabled) {
+      try { recog.start(); } catch(e) {}
+    } else {
+      setStatus("idle");
+    }
+  };
+
+  // ---------- BUTTONS ----------
+  micBtn.addEventListener("click", () => {
+    enabled = !enabled;
+    micBtn.textContent = enabled ? "mic on" : "mic off";
+    micBtn.classList.toggle("off", !enabled);
+    setStatus(enabled ? (running ? "listening" : "paused") : "idle");
+    if (!enabled) { try { recog.stop(); } catch(e) {} }
+    else if (running) { try { recog.start(); } catch(e) {} }
+  });
+
+  startBtn.addEventListener("click", async () => {
+    if (running) return;
+    running = true;
+    startBtn.style.display = "none";
+    setStatus("starting");
+    await startLevelMeter();
+    // nudge voices list to load
+    synth.getVoices();
+    try { recog.start(); } catch(e) {}
+    setStatus("listening");
+    add("j", "Online. Start any command with 'Jarvis'.");
+    say("Online. Start any command with Jarvis.");
+  });
+
+  setStatus("tap start listening");
+})();
+</script>
+</body>
+</html>
