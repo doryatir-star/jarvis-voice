@@ -227,6 +227,14 @@
   const micBtn = $("mic");
   const startBtn = $("start");
 
+  // Surface errors on screen so Quest users can see what's wrong
+  window.addEventListener("error", e => {
+    add("e", "JS error: " + (e.message || e.error || e));
+  });
+  window.addEventListener("unhandledrejection", e => {
+    add("e", "Promise error: " + (e.reason && e.reason.message || e.reason || e));
+  });
+
   const setStatus = s => status.textContent = s;
   const add = (cls, text) => {
     const p = document.createElement("p");
@@ -520,7 +528,8 @@
     whisperLoading = true;
     add("j", "Loading voice engine (~40 MB, one-time download)...");
     setStatus("loading voice engine");
-    const mod = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+    // esm.sh serves proper ES module; jsdelivr doesn't for this package.
+    const mod = await import("https://esm.sh/@xenova/transformers@2.17.2");
     mod.env.allowLocalModels = false;
     mod.env.useBrowserCache = true;
     whisper = await mod.pipeline("automatic-speech-recognition", "Xenova/whisper-tiny.en", {
