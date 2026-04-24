@@ -129,6 +129,20 @@
   }
   button:hover { background: rgba(56,232,255,.18); box-shadow: 0 0 20px rgba(56,232,255,.3); }
   button.off { color: #ff9090; border-color: rgba(255,120,120,.5); }
+  button.hold {
+    background: rgba(56,232,255,.14);
+    border-color: var(--cyan);
+    font-size: 14px;
+    padding: 14px 26px;
+    touch-action: none;
+    user-select: none;
+  }
+  button.hold.rec {
+    background: rgba(255,120,120,.25);
+    border-color: #ff7a7a;
+    color: #fff;
+    box-shadow: 0 0 30px rgba(255,120,120,.5);
+  }
 
   .hint { color: var(--dim); font-size: 12px; text-align: center; max-width: 600px; }
 
@@ -183,7 +197,11 @@
 
   <div class="row" id="voicerow">
     <button id="mic">mic on</button>
-    <button id="start">start voice</button>
+    <button id="start">start always-listen</button>
+  </div>
+
+  <div class="row">
+    <button id="hold" class="hold">🎤 Hold to speak</button>
   </div>
 
   <div class="inputrow">
@@ -196,7 +214,7 @@
   <div id="log"></div>
   <div class="hint">
     Commands: <b>open YouTube</b>, <b>what is gravity</b>, <b>what time is it</b>, <b>play lofi</b>, <b>search cats</b>.
-    On Quest / iOS / Firefox, typing works. On Chrome / Edge, just say <b>"Jarvis, ..."</b>.
+    <br/>Three ways to talk to Jarvis: <b>Always-listen</b> (Chrome/Edge — say "Jarvis, ..."), <b>Hold-to-Speak</b> (every browser, ~40 MB one-time download), or <b>Type</b>.
   </div>
 </div>
 
@@ -223,11 +241,11 @@
   const hasVoice = !!SR;
   const badge = $("modebadge");
   if (!hasVoice) {
-    badge.innerHTML = '<span class="badge warn">text-only mode · this browser has no speech recognition</span>';
+    badge.innerHTML = '<span class="badge warn">no always-listen · use Hold-to-Speak or type</span>';
     $("voicerow").style.display = "none";
-    setStatus("type a command below");
+    setStatus("hold to speak or type");
   } else {
-    badge.innerHTML = '<span class="badge">voice + text · tap start voice</span>';
+    badge.innerHTML = '<span class="badge">always-listen + hold-to-speak + text</span>';
   }
 
   const recog = hasVoice ? new SR() : null;
@@ -486,6 +504,112 @@
       say("Online. Start any command with Jarvis.");
     });
   }
+
+  // ---------- UNIVERSAL PUSH-TO-TALK (works in every browser) ----------
+  // Uses transformers.js Whisper in the browser — no API key, no server.
+  const holdBtn = $("hold");
+  let whisper = null, whisperLoading = false;
+  let recStream = null, recorder = null, recChunks = [];
+
+  async function ensureWhisper() {
+    if (whisper) return whisper;
+    if (whisperLoading) {
+      while (!whisper) await new Promise(r => setTimeout(r, 150));
+      return whisper;
+    }
+    whisperLoading = true;
+    add("j", "Loading voice engine (~40 MB, one-time download)...");
+    setStatus("loading voice engine");
+    const mod = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+    mod.env.allowLocalModels = false;
+    mod.env.useBrowserCache = true;
+    whisper = await mod.pipeline("automatic-speech-recognition", "Xenova/whisper-tiny.en", {
+      quantized: true,
+      progress_callback: p => {
+        if (p.status === "progress" && typeof p.progress === "number") {
+          setStatus("loading " + p.progress.toFixed(0) + "%");
+        }
+      },
+    });
+    whisperLoading = false;
+    setStatus("ready");
+    add("j", "Voice engine ready. Hold the mic button and speak.");
+    return whisper;
+  }
+
+  async function blobToMono16k(blob) {
+    const ab = await blob.arrayBuffer();
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await ac.decodeAudioData(ab);
+    ac.close();
+    const src = buf.getChannelData(0);
+    const srcRate = buf.sampleRate;
+    if (srcRate === 16000) return src;
+    const ratio = srcRate / 16000;
+    const outLen = Math.floor(src.length / ratio);
+    const out = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) out[i] = src[Math.floor(i * ratio)];
+    return out;
+  }
+
+  async function startHoldRecord() {
+    try {
+      if (!recStream) recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch(e) {
+      add("e", "Microphone permission denied.");
+      setStatus("mic blocked");
+      return;
+    }
+    recChunks = [];
+    try {
+      recorder = new MediaRecorder(recStream);
+    } catch(e) {
+      add("e", "Recording not supported in this browser.");
+      return;
+    }
+    recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+    recorder.start();
+    holdBtn.classList.add("rec");
+    holdBtn.textContent = "● recording — release to send";
+    setStatus("listening");
+    // Kick off whisper download in parallel if not loaded
+    ensureWhisper().catch(e => add("e", "Voice engine failed: " + e.message));
+  }
+
+  async function stopHoldRecord() {
+    if (!recorder || recorder.state !== "recording") return;
+    holdBtn.classList.remove("rec");
+    holdBtn.textContent = "🎤 Hold to speak";
+    setStatus("transcribing");
+    await new Promise(r => { recorder.onstop = r; recorder.stop(); });
+    const mime = recorder.mimeType || "audio/webm";
+    const blob = new Blob(recChunks, { type: mime });
+    if (blob.size < 800) { setStatus("ready"); return; }
+    try {
+      const audio = await blobToMono16k(blob);
+      const w = await ensureWhisper();
+      const out = await w(audio, { sampling_rate: 16000 });
+      const text = (out.text || "").trim();
+      if (!text) { setStatus("ready"); return; }
+      const { cmd, matched } = stripWake(text);
+      const payload = (matched ? cmd : text).trim() || text;
+      add("u", text);
+      if (!payload) { say("Yes?"); setStatus("ready"); return; }
+      await handle(payload);
+    } catch(e) {
+      add("e", "Transcription failed: " + e.message);
+    } finally {
+      setStatus("ready");
+    }
+  }
+
+  // Bind mouse + touch + pointer for maximum Quest / mobile compatibility
+  ["pointerdown","touchstart","mousedown"].forEach(ev =>
+    holdBtn.addEventListener(ev, e => { e.preventDefault(); startHoldRecord(); }, { passive: false })
+  );
+  ["pointerup","pointerleave","pointercancel","touchend","touchcancel","mouseup","mouseleave"].forEach(ev =>
+    holdBtn.addEventListener(ev, e => { e.preventDefault(); stopHoldRecord(); }, { passive: false })
+  );
 
   // Text input works in every browser (including Meta Quest)
   const typed = $("typed");
