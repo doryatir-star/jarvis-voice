@@ -78,6 +78,137 @@ SITES = {
     "steam": "https://store.steampowered.com",
     "epic games": "https://store.epicgames.com",
     "discord web": "https://discord.com/app",
+    # --- search / reference ---
+    "bing": "https://www.bing.com", "duckduckgo": "https://duckduckgo.com",
+    "yahoo": "https://www.yahoo.com", "yandex": "https://yandex.com",
+    "wolfram": "https://www.wolframalpha.com", "wolfram alpha": "https://www.wolframalpha.com",
+    "archive": "https://archive.org", "wayback machine": "https://web.archive.org",
+    "scholar": "https://scholar.google.com", "google scholar": "https://scholar.google.com",
+    "arxiv": "https://arxiv.org", "pubmed": "https://pubmed.ncbi.nlm.nih.gov",
+    "merriam webster": "https://www.merriam-webster.com", "dictionary": "https://www.dictionary.com",
+    "thesaurus": "https://www.thesaurus.com", "urban dictionary": "https://www.urbandictionary.com",
+    "wiktionary": "https://en.wiktionary.org", "britannica": "https://www.britannica.com",
+    # --- coding / dev ---
+    "gitlab": "https://gitlab.com", "bitbucket": "https://bitbucket.org",
+    "codepen": "https://codepen.io", "codesandbox": "https://codesandbox.io",
+    "replit": "https://replit.com", "jsfiddle": "https://jsfiddle.net",
+    "leetcode": "https://leetcode.com", "hackerrank": "https://www.hackerrank.com",
+    "codewars": "https://www.codewars.com", "stack exchange": "https://stackexchange.com",
+    "mdn": "https://developer.mozilla.org", "w3schools": "https://www.w3schools.com",
+    "devdocs": "https://devdocs.io", "npm": "https://www.npmjs.com",
+    "pypi": "https://pypi.org", "rubygems": "https://rubygems.org",
+    "crates": "https://crates.io", "docker hub": "https://hub.docker.com",
+    "vercel": "https://vercel.com", "netlify": "https://www.netlify.com",
+    "render": "https://render.com", "railway": "https://railway.app",
+    "cloudflare": "https://dash.cloudflare.com", "aws": "https://aws.amazon.com/console",
+    "azure": "https://portal.azure.com", "gcp": "https://console.cloud.google.com",
+    "google cloud": "https://console.cloud.google.com", "digitalocean": "https://cloud.digitalocean.com",
+    # --- AI ---
+    "anthropic": "https://www.anthropic.com", "openai": "https://openai.com",
+    "huggingface": "https://huggingface.co", "perplexity": "https://www.perplexity.ai",
+    "midjourney": "https://www.midjourney.com", "stable diffusion": "https://stablediffusionweb.com",
+    "dalle": "https://labs.openai.com", "copilot": "https://copilot.microsoft.com",
+    "groq": "https://groq.com", "mistral": "https://mistral.ai",
+    "cohere": "https://cohere.com", "replicate": "https://replicate.com",
+    "elevenlabs": "https://elevenlabs.io", "runway": "https://runwayml.com",
+    "suno": "https://suno.com", "civitai": "https://civitai.com",
+    "leonardo": "https://leonardo.ai", "ideogram": "https://ideogram.ai",
+    # --- entertainment / video ---
+    "disney plus": "https://www.disneyplus.com", "disney+": "https://www.disneyplus.com",
+    "hbo max": "https://www.max.com", "max": "https://www.max.com",
+    "hulu": "https://www.hulu.com", "prime video": "https://www.primevideo.com",
+    "apple tv": "https://tv.apple.com", "paramount plus": "https://www.paramountplus.com",
+    "peacock": "https://www.peacocktv.com", "crunchyroll": "https://www.crunchyroll.com",
+    "youtube music": "https://music.youtube.com", "soundcloud": "https://soundcloud.com",
+    "bandcamp": "https://bandcamp.com", "deezer": "https://www.deezer.com",
+    "tidal": "https://tidal.com", "apple music": "https://music.apple.com",
+    "vimeo": "https://vimeo.com", "dailymotion": "https://www.dailymotion.com",
+    "kick": "https://kick.com", "rumble": "https://rumble.com",
+    "imdb": "https://www.imdb.com", "rotten tomatoes": "https://www.rottentomatoes.com",
+    "metacritic": "https://www.metacritic.com", "letterboxd": "https://letterboxd.com",
+    "myanimelist": "https://myanimelist.net", "anilist": "https://anilist.co",
+    # --- social ---
+    "threads": "https://www.threads.net", "mastodon": "https://mastodon.social",
+    "bluesky": "https://bsky.app", "snapchat": "https://web.snapchat.com",
+    "pinterest": "https://www.pinterest.com", "tumblr": "https://www.tumblr.com",
+    "telegram": "https://web.telegram.org", "signal": "https://signal.org",
+    "messenger": "https://www.messenger.com", "slack": "https://slack.com",
+    "teams": "https://teams.microsoft.com", "microsoft teams": "https://teams.microsoft.com",
+    "zoom": "https://zoom.us", "google meet": "https://meet.google.com",
+    "skype": "https://web.skype.com", "quora": "https://www.quora.com",
+    "medium": "https://medium.com", "substack": "https://substack.com",
+    "patreon": "https://www.patreon.com", "kofi": "https://ko-fi.com",
+    # --- shopping ---
+    "etsy": "https://www.etsy.com", "walmart": "https://www.walmart.com",
+    "target": "https://www.target.com", "best buy": "https://www.bestbuy.com",
+    "newegg": "https://www.newegg.com", "ikea": "https://www.ikea.com",
+    "alibaba": "https://www.alibaba.com", "aliexpress": "https://www.aliexpress.com",
+    "shein": "https://www.shein.com", "temu": "https://www.temu.com",
+    "wayfair": "https://www.wayfair.com", "home depot": "https://www.homedepot.com",
+    "costco": "https://www.costco.com", "shopify": "https://www.shopify.com",
+    # --- gaming ---
+    "playstation": "https://www.playstation.com", "xbox": "https://www.xbox.com",
+    "nintendo": "https://www.nintendo.com", "ea": "https://www.ea.com",
+    "ubisoft": "https://www.ubisoft.com", "blizzard": "https://www.blizzard.com",
+    "battle net": "https://www.battle.net", "gog": "https://www.gog.com",
+    "itch": "https://itch.io", "minecraft": "https://www.minecraft.net",
+    "fortnite": "https://www.fortnite.com", "valorant": "https://playvalorant.com",
+    "league": "https://leagueoflegends.com", "league of legends": "https://leagueoflegends.com",
+    "riot": "https://www.riotgames.com", "ign": "https://www.ign.com",
+    "gamespot": "https://www.gamespot.com", "speedrun": "https://www.speedrun.com",
+    # --- news / info ---
+    "bbc": "https://www.bbc.com", "cnn": "https://www.cnn.com",
+    "nyt": "https://www.nytimes.com", "new york times": "https://www.nytimes.com",
+    "guardian": "https://www.theguardian.com", "reuters": "https://www.reuters.com",
+    "ap news": "https://apnews.com", "bloomberg": "https://www.bloomberg.com",
+    "wsj": "https://www.wsj.com", "wall street journal": "https://www.wsj.com",
+    "ft": "https://www.ft.com", "economist": "https://www.economist.com",
+    "verge": "https://www.theverge.com", "ars technica": "https://arstechnica.com",
+    "techcrunch": "https://techcrunch.com", "wired": "https://www.wired.com",
+    "engadget": "https://www.engadget.com", "9to5mac": "https://9to5mac.com",
+    "hacker news": "https://news.ycombinator.com", "lobsters": "https://lobste.rs",
+    # --- finance ---
+    "coinbase": "https://www.coinbase.com", "binance": "https://www.binance.com",
+    "kraken": "https://www.kraken.com", "robinhood": "https://robinhood.com",
+    "etoro": "https://www.etoro.com", "fidelity": "https://www.fidelity.com",
+    "vanguard": "https://www.vanguard.com", "schwab": "https://www.schwab.com",
+    "tradingview": "https://www.tradingview.com", "yahoo finance": "https://finance.yahoo.com",
+    "google finance": "https://www.google.com/finance", "coinmarketcap": "https://coinmarketcap.com",
+    "coingecko": "https://www.coingecko.com", "etherscan": "https://etherscan.io",
+    "paypal": "https://www.paypal.com", "venmo": "https://venmo.com",
+    "wise": "https://wise.com", "stripe": "https://stripe.com",
+    # --- productivity / docs ---
+    "notion": "https://www.notion.so", "obsidian": "https://obsidian.md",
+    "evernote": "https://evernote.com", "trello": "https://trello.com",
+    "asana": "https://app.asana.com", "monday": "https://monday.com",
+    "linear": "https://linear.app", "jira": "https://atlassian.com/software/jira",
+    "confluence": "https://atlassian.com/software/confluence", "airtable": "https://airtable.com",
+    "figma": "https://www.figma.com", "miro": "https://miro.com",
+    "canva": "https://www.canva.com", "google docs": "https://docs.google.com",
+    "google sheets": "https://sheets.google.com", "google slides": "https://slides.google.com",
+    "office": "https://www.office.com", "outlook": "https://outlook.live.com",
+    "calendar": "https://calendar.google.com", "google calendar": "https://calendar.google.com",
+    "icloud": "https://www.icloud.com", "dropbox": "https://www.dropbox.com",
+    "box": "https://www.box.com", "wetransfer": "https://wetransfer.com",
+    # --- learning ---
+    "coursera": "https://www.coursera.org", "edx": "https://www.edx.org",
+    "udemy": "https://www.udemy.com", "udacity": "https://www.udacity.com",
+    "khan academy": "https://www.khanacademy.org", "duolingo": "https://www.duolingo.com",
+    "skillshare": "https://www.skillshare.com", "pluralsight": "https://www.pluralsight.com",
+    "codecademy": "https://www.codecademy.com", "freecodecamp": "https://www.freecodecamp.org",
+    "brilliant": "https://brilliant.org", "ted": "https://www.ted.com",
+    # --- travel ---
+    "google flights": "https://www.google.com/travel/flights", "skyscanner": "https://www.skyscanner.net",
+    "kayak": "https://www.kayak.com", "expedia": "https://www.expedia.com",
+    "booking": "https://www.booking.com", "airbnb": "https://www.airbnb.com",
+    "tripadvisor": "https://www.tripadvisor.com", "uber": "https://www.uber.com",
+    "lyft": "https://www.lyft.com", "doordash": "https://www.doordash.com",
+    "ubereats": "https://www.ubereats.com", "grubhub": "https://www.grubhub.com",
+    # --- weather / utilities ---
+    "weather": "https://weather.com", "weather underground": "https://www.wunderground.com",
+    "speedtest": "https://www.speedtest.net", "fast": "https://fast.com",
+    "downdetector": "https://downdetector.com", "ifttt": "https://ifttt.com",
+    "zapier": "https://zapier.com", "make": "https://www.make.com",
 }
 
 FOLDERS = {
@@ -618,6 +749,315 @@ def roll_dice(value: str) -> str:
     return f"You rolled {sum(rolls)} ({', '.join(map(str, rolls))})."
 
 
+# ---------- Bulk new commands ----------
+
+# Unit conversions: factor relative to a canonical unit per dimension
+_UNITS = {
+    "length": {"mm": 0.001, "cm": 0.01, "m": 1, "km": 1000,
+               "in": 0.0254, "ft": 0.3048, "yard": 0.9144, "mile": 1609.344},
+    "mass":   {"mg": 1e-6, "g": 0.001, "kg": 1, "ton": 1000,
+               "oz": 0.0283495, "lb": 0.453592, "stone": 6.35029},
+    "volume": {"ml": 0.001, "l": 1, "cup": 0.2366, "pint": 0.4732,
+               "quart": 0.9464, "gallon": 3.7854},
+    "speed":  {"kmh": 1, "mph": 1.60934, "mps": 3.6, "knot": 1.852},
+    "time":   {"second": 1, "minute": 60, "hour": 3600, "day": 86400, "week": 604800},
+    "data":   {"byte": 1, "kb": 1024, "mb": 1024**2, "gb": 1024**3, "tb": 1024**4},
+}
+_UNIT_ALIASES = {
+    "millimeter": "mm", "millimeters": "mm", "centimeter": "cm", "centimeters": "cm",
+    "meter": "m", "meters": "m", "kilometer": "km", "kilometers": "km",
+    "inch": "in", "inches": "in", "foot": "ft", "feet": "ft",
+    "yards": "yard", "miles": "mile",
+    "milligram": "mg", "milligrams": "mg", "gram": "g", "grams": "g",
+    "kilogram": "kg", "kilograms": "kg", "tons": "ton",
+    "ounce": "oz", "ounces": "oz", "pound": "lb", "pounds": "lb",
+    "milliliter": "ml", "milliliters": "ml", "liter": "l", "liters": "l", "litre": "l",
+    "cups": "cup", "pints": "pint", "quarts": "quart", "gallons": "gallon",
+    "kph": "kmh", "kilometers per hour": "kmh", "miles per hour": "mph",
+    "meters per second": "mps", "knots": "knot",
+    "seconds": "second", "minutes": "minute", "hours": "hour", "days": "day", "weeks": "week",
+    "bytes": "byte", "kilobyte": "kb", "kilobytes": "kb", "megabyte": "mb",
+    "megabytes": "mb", "gigabyte": "gb", "gigabytes": "gb", "terabyte": "tb", "terabytes": "tb",
+}
+
+def _canonical_unit(u: str):
+    u = u.lower().strip()
+    u = _UNIT_ALIASES.get(u, u)
+    for dim, table in _UNITS.items():
+        if u in table:
+            return dim, u
+    return None, None
+
+def convert(value: str) -> str:
+    """value like '5 km to miles' or '212 fahrenheit to celsius'."""
+    v = (value or "").lower().strip()
+    # Temperature
+    m = re.match(r"(-?\d+(?:\.\d+)?)\s*(?:degrees?\s*)?(c|celsius|f|fahrenheit|k|kelvin)\s+(?:to|in)\s+(c|celsius|f|fahrenheit|k|kelvin)", v)
+    if m:
+        n = float(m.group(1))
+        src = m.group(2)[0]; dst = m.group(3)[0]
+        # to celsius first
+        if src == "f": c = (n - 32) * 5/9
+        elif src == "k": c = n - 273.15
+        else: c = n
+        if dst == "f": out = c * 9/5 + 32
+        elif dst == "k": out = c + 273.15
+        else: out = c
+        return f"{n}°{src.upper()} is {out:.2f}°{dst.upper()}."
+    # Generic
+    m = re.match(r"(-?\d+(?:\.\d+)?)\s*([\w ]+?)\s+(?:to|in)\s+([\w ]+)", v)
+    if not m:
+        return "Try '5 km to miles' or '212 F to C'."
+    n = float(m.group(1)); src = m.group(2).strip(); dst = m.group(3).strip()
+    sd, su = _canonical_unit(src); dd, du = _canonical_unit(dst)
+    if not su or not du or sd != dd:
+        return f"I can't convert {src} to {dst}."
+    base = n * _UNITS[sd][su]
+    out = base / _UNITS[dd][du]
+    return f"{n} {src} equals {out:.4g} {dst}."
+
+
+def define(word: str) -> str:
+    w = (word or "").strip().split()[0:3]
+    if not w: return "Define what?"
+    q = " ".join(w)
+    try:
+        url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{urllib.parse.quote(q)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8", "ignore"))
+        if isinstance(data, list) and data:
+            for entry in data:
+                for meaning in entry.get("meanings", []):
+                    pos = meaning.get("partOfSpeech", "")
+                    defs = meaning.get("definitions", [])
+                    if defs and defs[0].get("definition"):
+                        return f"{q} ({pos}): {defs[0]['definition']}"
+    except Exception:
+        pass
+    return f"No definition found for {q}."
+
+
+def synonym(word: str) -> str:
+    w = (word or "").strip()
+    if not w: return "Synonyms for what?"
+    try:
+        req = urllib.request.Request(
+            f"https://api.datamuse.com/words?rel_syn={urllib.parse.quote(w)}&max=5",
+            headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        words = [d["word"] for d in data][:5]
+        if words:
+            return f"Synonyms for {w}: " + ", ".join(words) + "."
+    except Exception:
+        pass
+    return f"No synonyms found for {w}."
+
+
+def rhyme(word: str) -> str:
+    w = (word or "").strip()
+    if not w: return "Rhymes with what?"
+    try:
+        req = urllib.request.Request(
+            f"https://api.datamuse.com/words?rel_rhy={urllib.parse.quote(w)}&max=8",
+            headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        words = [d["word"] for d in data][:8]
+        if words:
+            return f"Rhymes with {w}: " + ", ".join(words) + "."
+    except Exception:
+        pass
+    return f"No rhymes for {w}."
+
+
+def crypto_price(symbol: str) -> str:
+    s = (symbol or "bitcoin").lower().strip()
+    aliases = {"btc": "bitcoin", "eth": "ethereum", "doge": "dogecoin",
+               "sol": "solana", "ada": "cardano", "xrp": "ripple",
+               "ltc": "litecoin", "matic": "polygon", "dot": "polkadot",
+               "shib": "shiba-inu", "avax": "avalanche-2", "link": "chainlink"}
+    coin = aliases.get(s, s)
+    try:
+        req = urllib.request.Request(
+            f"https://api.coingecko.com/api/v3/simple/price?ids={urllib.parse.quote(coin)}&vs_currencies=usd",
+            headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        price = data.get(coin, {}).get("usd")
+        if price is not None:
+            return f"{coin.title()} is at ${price:,.2f}."
+    except Exception:
+        pass
+    return f"Couldn't fetch {coin} price."
+
+
+def stock_price(symbol: str) -> str:
+    s = (symbol or "").upper().strip()
+    if not s: return "Which stock?"
+    try:
+        req = urllib.request.Request(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(s)}?interval=1d",
+            headers={"User-Agent": "Mozilla/5.0 Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        meta = data["chart"]["result"][0]["meta"]
+        price = meta.get("regularMarketPrice")
+        prev = meta.get("previousClose") or price
+        cur = meta.get("currency", "USD")
+        if price is not None:
+            change = (price - prev) / prev * 100 if prev else 0
+            arrow = "up" if change >= 0 else "down"
+            return f"{s} is {price:.2f} {cur}, {arrow} {abs(change):.2f}% today."
+    except Exception:
+        pass
+    return f"Couldn't fetch {s}."
+
+
+def password_gen(value: str = "") -> str:
+    import string
+    m = re.search(r"\d+", value or "")
+    n = int(m.group(0)) if m else 16
+    n = max(6, min(64, n))
+    chars = string.ascii_letters + string.digits + "!@#$%&*?-_+="
+    pw = "".join(random.choice(chars) for _ in range(n))
+    try:
+        # also copy to clipboard
+        subprocess.run("clip", input=pw, text=True, timeout=2)
+        return f"Password generated and copied: {pw}"
+    except Exception:
+        return f"Password: {pw}"
+
+
+def random_color() -> str:
+    h = "%06X" % random.randint(0, 0xFFFFFF)
+    r = int(h[0:2], 16); g = int(h[2:4], 16); b = int(h[4:6], 16)
+    try:
+        subprocess.run("clip", input=f"#{h}", text=True, timeout=2)
+    except Exception: pass
+    return f"Random color: #{h}, RGB {r}, {g}, {b}. Copied."
+
+
+def random_number(value: str) -> str:
+    m = re.findall(r"\d+", value or "")
+    if len(m) >= 2:
+        a, b = int(m[0]), int(m[1])
+    else:
+        a, b = 1, 100
+    if a > b: a, b = b, a
+    return f"Random number between {a} and {b}: {random.randint(a, b)}."
+
+
+def quote() -> str:
+    """Inspirational quote — falls back to local list if API down."""
+    try:
+        req = urllib.request.Request("https://api.quotable.io/random",
+                                     headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            j = json.loads(r.read().decode("utf-8"))
+        return f'"{j["content"]}" — {j["author"]}'
+    except Exception:
+        return random.choice([
+            '"The best way out is always through." — Robert Frost',
+            '"Sometimes you win, sometimes you learn." — John Maxwell',
+            '"Stay hungry. Stay foolish." — Steve Jobs',
+        ])
+
+
+def word_count(text: str) -> str:
+    t = (text or "").strip()
+    if not t: return "Count what?"
+    return f"{len(t.split())} words, {len(t)} characters."
+
+
+def reverse_text(text: str) -> str:
+    return (text or "")[::-1] or "Reverse what?"
+
+
+def upper_text(text: str) -> str:
+    return (text or "").upper() or "Uppercase what?"
+
+
+def lower_text(text: str) -> str:
+    return (text or "").lower() or "Lowercase what?"
+
+
+def clipboard_get() -> str:
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
+                             capture_output=True, text=True, timeout=3,
+                             creationflags=0x08000000)
+        v = (out.stdout or "").strip()
+        return f"Clipboard: {v[:200]}" if v else "Clipboard is empty."
+    except Exception:
+        return "Couldn't read clipboard."
+
+
+def clipboard_set(text: str) -> str:
+    if not text: return "Set clipboard to what?"
+    try:
+        subprocess.run("clip", input=text, text=True, timeout=2)
+        return "Copied."
+    except Exception:
+        return "Couldn't write clipboard."
+
+
+def window(action: str) -> str:
+    """Snap / move / arrange windows."""
+    a = (action or "").lower().strip()
+    try:
+        if a in ("snap left", "left half"): _send_hotkey([0x5B, 0x25]); return "Snapped left."
+        if a in ("snap right", "right half"): _send_hotkey([0x5B, 0x27]); return "Snapped right."
+        if a in ("maximize", "maximise", "full screen"): _send_hotkey([0x5B, 0x26]); return "Maximized."
+        if a in ("restore", "restore down"): _send_hotkey([0x5B, 0x28]); return "Restored."
+        if a == "minimize": _send_hotkey([0x5B, 0x28]); return "Minimized."
+        if a == "alt tab": _send_hotkey([0x12, 0x09]); return "Switching window."
+        if a == "switch tab": _send_hotkey([0x11, 0x09]); return "Next tab."
+        if a == "previous tab": _send_hotkey([0x11, 0x10, 0x09]); return "Previous tab."
+        if a == "new tab": _send_hotkey([0x11, 0x54]); return "New tab."
+        if a == "close tab": _send_hotkey([0x11, 0x57]); return "Closed tab."
+        if a == "reopen tab": _send_hotkey([0x11, 0x10, 0x54]); return "Reopened tab."
+        if a == "refresh": _press_key(0x74); return "Refreshing."
+        if a == "find": _send_hotkey([0x11, 0x46]); return "Find."
+        if a == "save": _send_hotkey([0x11, 0x53]); return "Saved."
+        if a == "print": _send_hotkey([0x11, 0x50]); return "Print dialog."
+        if a == "zoom in": _send_hotkey([0x11, 0xBB]); return "Zoom in."
+        if a == "zoom out": _send_hotkey([0x11, 0xBD]); return "Zoom out."
+        if a == "reset zoom": _send_hotkey([0x11, 0x30]); return "Zoom reset."
+        if a == "back": _press_key(0x08); return "Back."
+        if a == "forward": _send_hotkey([0x12, 0x27]); return "Forward."
+        if a == "scroll up": _press_key(0x21); return "Page up."
+        if a == "scroll down": _press_key(0x22); return "Page down."
+        if a == "top": _send_hotkey([0x11, 0x24]); return "Top."
+        if a == "bottom": _send_hotkey([0x11, 0x23]); return "Bottom."
+        if a == "address bar": _send_hotkey([0x11, 0x4C]); return "Address bar."
+        if a == "downloads": _send_hotkey([0x11, 0x4A]); return "Downloads."
+        if a == "history": _send_hotkey([0x11, 0x48]); return "History."
+        if a == "bookmarks": _send_hotkey([0x11, 0x10, 0x4F]); return "Bookmarks."
+        if a == "dev tools": _press_key(0x7B); return "Dev tools."
+    except Exception as e:
+        return f"Window error: {e}"
+    return f"Don't know how to {action}."
+
+
+def kill_process(name: str) -> str:
+    """Kill all processes matching a name (e.g. 'chrome', 'notepad')."""
+    n = (name or "").strip().lower()
+    if not n: return "Kill what?"
+    if not n.endswith(".exe"): n += ".exe"
+    blocked = {"explorer.exe", "winlogon.exe", "csrss.exe", "wininit.exe", "system.exe"}
+    if n in blocked: return f"I won't kill {n} — it's a system process."
+    try:
+        out = subprocess.run(["taskkill", "/F", "/IM", n],
+                             capture_output=True, text=True, timeout=4)
+        if out.returncode == 0:
+            return f"Closed {n}."
+        return f"No running {n}."
+    except Exception as e:
+        return f"Couldn't kill {n}: {e}"
+
+
 def execute(action: str, value: str) -> str:
     a = (action or "").lower()
     v = value or ""
@@ -636,4 +1076,22 @@ def execute(action: str, value: str) -> str:
     if a == "type": return type_text(v)
     if a == "coin": return flip_coin()
     if a == "dice": return roll_dice(v)
+    if a == "convert": return convert(v)
+    if a == "define": return define(v)
+    if a == "synonym": return synonym(v)
+    if a == "rhyme": return rhyme(v)
+    if a == "crypto": return crypto_price(v)
+    if a == "stock": return stock_price(v)
+    if a == "password": return password_gen(v)
+    if a == "color": return random_color()
+    if a == "rand": return random_number(v)
+    if a == "quote": return quote()
+    if a == "wordcount": return word_count(v)
+    if a == "reverse": return reverse_text(v)
+    if a == "upper": return upper_text(v)
+    if a == "lower": return lower_text(v)
+    if a == "clip_get": return clipboard_get()
+    if a == "clip_set": return clipboard_set(v)
+    if a == "window": return window(v)
+    if a == "kill": return kill_process(v)
     return ""

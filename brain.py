@@ -217,6 +217,95 @@ class Brain:
         if "roll the dice" in t or "roll dice" in t:
             return {"action": "dice", "value": "1d6", "speak": ""}
 
+        # Unit conversion (5 km to miles, 100 f to c, 2 kg to pounds)
+        if re.search(r"\d.*\s+(?:to|in)\s+\w", t) and re.search(r"(km|mi|miles?|kg|pound|lb|oz|gram|ounce|inch|foot|feet|yard|meter|cm|mm|liter|gallon|cup|fahrenheit|celsius|kelvin|mph|kmh|kph|byte|kb|mb|gb|tb|second|minute|hour|day|week)\b", t):
+            return {"action": "convert", "value": t, "speak": ""}
+        m = re.match(r"convert (.+)$", t)
+        if m: return {"action": "convert", "value": m.group(1), "speak": ""}
+
+        # Definition / spelling / synonyms / rhymes
+        m = re.match(r"(?:define|definition of|meaning of|what does (.+) mean) (.+)$", t)
+        if m:
+            w = m.group(2) or m.group(1)
+            return {"action": "define", "value": w.strip("?. "), "speak": ""}
+        m = re.match(r"^define (.+)$", t)
+        if m: return {"action": "define", "value": m.group(1).strip("?. "), "speak": ""}
+        m = re.match(r"(?:synonyms? (?:for|of)|another word for) (.+)$", t)
+        if m: return {"action": "synonym", "value": m.group(1).strip("?. "), "speak": ""}
+        m = re.match(r"(?:what )?rhymes? with (.+)$", t)
+        if m: return {"action": "rhyme", "value": m.group(1).strip("?. "), "speak": ""}
+
+        # Crypto / stock prices
+        m = re.match(r"(?:price of |what's the price of |what is the price of )?(?:bitcoin|btc|ethereum|eth|dogecoin|doge|solana|sol|cardano|ada|ripple|xrp|litecoin|ltc|polygon|matic|polkadot|dot|avalanche|avax|chainlink|link|shiba|shib)\s*(?:price)?$", t)
+        if m:
+            sym = re.sub(r"^(price of |what's the price of |what is the price of )", "", t)
+            sym = re.sub(r"\s*price$", "", sym).strip()
+            return {"action": "crypto", "value": sym, "speak": ""}
+        m = re.match(r"(?:stock price (?:of|for)|price of stock|how is) (\w+)(?: stock)?$", t)
+        if m: return {"action": "stock", "value": m.group(1), "speak": ""}
+        m = re.match(r"(\w{1,5}) stock(?: price)?$", t)
+        if m: return {"action": "stock", "value": m.group(1), "speak": ""}
+
+        # Password / random / color / quote
+        if re.search(r"\b(generate (?:a )?password|new password|random password|create (?:a )?password)\b", t):
+            return {"action": "password", "value": t, "speak": ""}
+        if re.search(r"\b(random color|give me a color|pick a color)\b", t):
+            return {"action": "color", "value": "", "speak": ""}
+        m = re.match(r"random number(?: between (\d+) (?:and|to) (\d+))?", t)
+        if m:
+            v = f"{m.group(1)} {m.group(2)}" if m.group(1) else ""
+            return {"action": "rand", "value": v, "speak": ""}
+        if re.search(r"\b(inspire me|motivate me|quote|inspirational quote|wise words)\b", t):
+            return {"action": "quote", "value": "", "speak": ""}
+
+        # Text utilities
+        m = re.match(r"(?:word count|count words in|how many words in) (.+)$", t)
+        if m: return {"action": "wordcount", "value": m.group(1), "speak": ""}
+        m = re.match(r"reverse (?:the text |this )?(.+)$", t)
+        if m: return {"action": "reverse", "value": m.group(1), "speak": ""}
+        m = re.match(r"(?:uppercase|capitalize) (.+)$", t)
+        if m: return {"action": "upper", "value": m.group(1), "speak": ""}
+        m = re.match(r"lowercase (.+)$", t)
+        if m: return {"action": "lower", "value": m.group(1), "speak": ""}
+
+        # Clipboard
+        if re.search(r"\b(read clipboard|what's (?:in|on) (?:the )?clipboard|clipboard contents)\b", t):
+            return {"action": "clip_get", "value": "", "speak": ""}
+        m = re.match(r"copy (?:to clipboard )?(.+?)(?: to clipboard)?$", t)
+        if m and "tab" not in t and "that" not in t:
+            return {"action": "clip_set", "value": m.group(1).strip("\"'"), "speak": ""}
+
+        # Window / browser shortcuts
+        WINDOW_PHRASES = {
+            "snap left": "snap left", "snap right": "snap right",
+            "left half": "snap left", "right half": "snap right",
+            "maximize": "maximize", "maximise": "maximize", "full screen": "maximize",
+            "restore": "restore", "minimize this window": "minimize",
+            "alt tab": "alt tab", "switch window": "alt tab",
+            "next tab": "switch tab", "switch tab": "switch tab",
+            "previous tab": "previous tab", "new tab": "new tab",
+            "close tab": "close tab", "reopen tab": "reopen tab",
+            "refresh": "refresh", "reload": "refresh",
+            "find on page": "find", "find in page": "find",
+            "save": "save", "print": "print",
+            "zoom in": "zoom in", "zoom out": "zoom out", "reset zoom": "reset zoom",
+            "go back": "back", "go forward": "forward",
+            "scroll up": "scroll up", "page up": "scroll up",
+            "scroll down": "scroll down", "page down": "scroll down",
+            "go to top": "top", "go to bottom": "bottom",
+            "address bar": "address bar", "downloads": "downloads",
+            "history": "history", "bookmarks": "bookmarks",
+            "developer tools": "dev tools", "dev tools": "dev tools",
+        }
+        for phrase, w in WINDOW_PHRASES.items():
+            if re.search(rf"\b{re.escape(phrase)}\b", t):
+                return {"action": "window", "value": w, "speak": ""}
+
+        # Kill process
+        m = re.match(r"(?:kill|close|quit|terminate|end) (?:process )?(\w[\w ]*?)(?: process)?$", t)
+        if m and m.group(1) not in ("window", "this window", "tab", "current window"):
+            return {"action": "kill", "value": m.group(1).strip(), "speak": ""}
+
         sys_action = _match_system(t)
         if sys_action:
             return {"action": "system", "value": sys_action, "speak": self._sys_speak(sys_action)}
