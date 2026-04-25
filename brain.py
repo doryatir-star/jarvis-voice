@@ -128,6 +128,32 @@ def _duckduckgo(query: str) -> str:
     return ""
 
 
+def _pollinations(prompt: str, history=None) -> str:
+    """Free LLM via pollinations.ai — no API key needed."""
+    try:
+        sys_msg = (
+            f"You are {ASSISTANT_NAME}, a witty, concise AI assistant for {USER_NAME}. "
+            "Reply in 1-3 short sentences, like a butler. No markdown, no lists."
+        )
+        convo = ""
+        if history:
+            for turn in history[-6:]:
+                role = "User" if turn["role"] == "user" else "Jarvis"
+                convo += f"{role}: {turn['content']}\n"
+        full = f"{sys_msg}\n{convo}User: {prompt}\nJarvis:"
+        url = "https://text.pollinations.ai/" + urllib.parse.quote(full)
+        req = urllib.request.Request(url, headers={"User-Agent": "Jarvis/4.0"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            txt = r.read().decode("utf-8", "ignore").strip()
+        # strip any leading "Jarvis:" the model echoed
+        txt = re.sub(r"^(Jarvis|Assistant)\s*:\s*", "", txt, flags=re.I)
+        if len(txt) > 600:
+            txt = txt[:560].rsplit(". ", 1)[0] + "."
+        return txt
+    except Exception:
+        return ""
+
+
 def _wikipedia(query: str) -> str:
     try:
         url = "https://en.wikipedia.org/api/rest_v1/page/summary/" + urllib.parse.quote(query.replace(" ", "_"))
@@ -341,6 +367,14 @@ class Brain:
                 return self._llm_think(raw)
             except Exception:
                 pass
+
+        # Free LLM (no key) — pollinations.ai
+        poll = _pollinations(raw, self.history)
+        if poll:
+            self.history.append({"role": "user", "content": raw})
+            self.history.append({"role": "assistant", "content": poll})
+            self.history = self.history[-12:]
+            return {"action": "chat", "value": "", "speak": poll}
 
         ans = _duckduckgo(t) or _wikipedia(t)
         if ans:

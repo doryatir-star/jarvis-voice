@@ -4,6 +4,21 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>J.A.R.V.I.S. — Web</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#020611" />
+<meta name="description" content="J.A.R.V.I.S. — voice assistant in your browser. Install on Quest, phone, or desktop." />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="JARVIS" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="application-name" content="JARVIS" />
+<meta name="msapplication-TileColor" content="#020611" />
+<meta name="msapplication-TileImage" content="icon-192.png" />
 <style>
   :root {
     --cyan: #38e8ff;
@@ -243,6 +258,18 @@
     log.appendChild(p);
     log.scrollTop = log.scrollHeight;
   };
+  const addLink = (url, label) => {
+    const p = document.createElement("p");
+    p.className = "j";
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "▶ " + label;
+    a.style.color = "#38e8ff";
+    a.style.textDecoration = "underline";
+    p.appendChild(a);
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+  };
 
   // ---------- SPEECH RECOGNITION (optional) ----------
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -360,7 +387,8 @@
   };
 
   function openSite(url, name) {
-    window.open(url, "_blank", "noopener");
+    const w = window.open(url, "_blank", "noopener");
+    if (!w || w.closed) addLink(url, `Tap to open ${name}`);
     return `Opening ${name}.`;
   }
 
@@ -645,6 +673,77 @@
     document.addEventListener("click", () => { try { synth.getVoices(); } catch(e) {} }, { once: true });
   } else {
     setStatus("tap start voice");
+  }
+})();
+</script>
+
+<!-- ============ PWA install button + service worker ============ -->
+<style>
+  #pwa-install {
+    position: fixed; bottom: 14px; right: 14px;
+    background: rgba(56,232,255,.12);
+    color: #38e8ff;
+    border: 1px solid rgba(56,232,255,.55);
+    padding: 10px 16px; border-radius: 6px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+    cursor: pointer; backdrop-filter: blur(6px);
+    box-shadow: 0 0 24px rgba(56,232,255,.25);
+    display: none; z-index: 9999;
+  }
+  #pwa-install:hover { background: rgba(56,232,255,.22); }
+</style>
+<button id="pwa-install" type="button">⬇ Install Jarvis</button>
+<script>
+(() => {
+  // Register service worker
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+
+  // Capture the install prompt (Chrome / Edge / Quest / Android)
+  let deferredPrompt = null;
+  const btn = document.getElementById("pwa-install");
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    btn.style.display = "block";
+  });
+
+  btn.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try { await deferredPrompt.userChoice; } catch (e) {}
+      deferredPrompt = null;
+      btn.style.display = "none";
+      return;
+    }
+    // iOS Safari has no prompt — show instructions
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+    if (isIOS) {
+      alert("To install on iPhone/iPad:\n1. Tap the Share button\n2. Choose 'Add to Home Screen'");
+    } else {
+      alert("To install:\nOpen your browser menu and choose 'Install app' or 'Add to Home screen'.");
+    }
+  });
+
+  window.addEventListener("appinstalled", () => {
+    btn.style.display = "none";
+    deferredPrompt = null;
+  });
+
+  // Hide button when already running as installed PWA
+  if (window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true) {
+    btn.style.display = "none";
+  } else {
+    // Always show a fallback button on iOS (no beforeinstallprompt there)
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) btn.style.display = "block";
   }
 })();
 </script>

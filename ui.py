@@ -12,27 +12,39 @@ BG = QtGui.QColor(3, 7, 14)
 TEXT = QtGui.QColor(200, 240, 255)
 
 
-# ---------- Background: starfield + scanlines + grid ----------
+# ---------- Background: starfield + hex grid + shooting stars + scanlines ----------
 class Starfield(QtWidgets.QWidget):
-    """Animated starfield + pulsing grid + horizontal scan lines."""
+    """Animated starfield, hex grid, scan lines, and shooting stars."""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         self._stars = [(random.random(), random.random(), random.random())
-                       for _ in range(140)]
+                       for _ in range(180)]
         self._phase = 0.0
         self._scan_y = 0.0
-        t = QtCore.QTimer(self); t.timeout.connect(self._tick); t.start(40)
+        self._shoot = []  # (x0, y0, vx, vy, life)
+        t = QtCore.QTimer(self); t.timeout.connect(self._tick); t.start(33)
 
     def _tick(self):
         self._phase += 0.04
-        self._scan_y = (self._scan_y + 1.2) % 100
-        # drift stars
+        self._scan_y = (self._scan_y + 0.8) % 100
         new = []
         for x, y, z in self._stars:
-            x = (x + 0.0006 * (z + 0.3)) % 1.0
+            x = (x + 0.0005 * (z + 0.3)) % 1.0
             new.append((x, y, z))
         self._stars = new
+        # spawn shooting star occasionally
+        if random.random() < 0.012 and len(self._shoot) < 3:
+            sx = random.random()
+            sy = random.random() * 0.6
+            self._shoot.append([sx, sy, 0.012, 0.005, 1.0])
+        # advance shooting stars
+        new_shoot = []
+        for s in self._shoot:
+            s[0] += s[2]; s[1] += s[3]; s[4] -= 0.018
+            if s[4] > 0 and s[0] < 1.1 and s[1] < 1.1:
+                new_shoot.append(s)
+        self._shoot = new_shoot
         self.update()
 
     def paintEvent(self, _):
@@ -40,40 +52,62 @@ class Starfield(QtWidgets.QWidget):
         w, h = self.width(), self.height()
         # Deep gradient bg
         grad = QtGui.QLinearGradient(0, 0, 0, h)
-        grad.setColorAt(0.0, QtGui.QColor(2, 6, 14))
-        grad.setColorAt(0.5, QtGui.QColor(6, 14, 28))
-        grad.setColorAt(1.0, QtGui.QColor(1, 4, 10))
+        grad.setColorAt(0.0, QtGui.QColor(2, 5, 12))
+        grad.setColorAt(0.5, QtGui.QColor(5, 12, 24))
+        grad.setColorAt(1.0, QtGui.QColor(1, 3, 8))
         p.fillRect(0, 0, w, h, grad)
 
-        # Soft grid lines
-        p.setPen(QtGui.QPen(QtGui.QColor(0, 80, 110, 35), 1))
-        step = 48
-        for x in range(0, w, step):
-            p.drawLine(x, 0, x, h)
-        for y in range(0, h, step):
-            p.drawLine(0, y, w, y)
+        # Hex grid pattern (low alpha)
+        p.setPen(QtGui.QPen(QtGui.QColor(0, 100, 130, 28), 1))
+        hex_r = 28
+        hex_w = hex_r * math.sqrt(3)
+        hex_h = hex_r * 1.5
+        rows = int(h / hex_h) + 2
+        cols = int(w / hex_w) + 2
+        for row in range(rows):
+            for col in range(cols):
+                cx = col * hex_w + (hex_w / 2 if row % 2 else 0)
+                cy = row * hex_h
+                pts = [QtCore.QPointF(cx + math.cos(math.pi/3 * i + math.pi/2) * hex_r,
+                                       cy + math.sin(math.pi/3 * i + math.pi/2) * hex_r)
+                       for i in range(6)]
+                poly = QtGui.QPolygonF(pts)
+                p.drawPolygon(poly)
 
-        # Stars
+        # Stars (with twinkle)
         for sx, sy, sz in self._stars:
             x = sx * w; y = sy * h
-            r = 0.5 + sz * 1.6
-            alpha = int(80 + sz * 175)
+            r = 0.4 + sz * 1.8
+            twinkle = 0.7 + 0.3 * math.sin(self._phase * 3 + sx * 50)
+            alpha = int((70 + sz * 180) * twinkle)
             p.fillRect(QtCore.QRectF(x, y, r, r),
                        QtGui.QColor(180, 230, 255, alpha))
 
+        # Shooting stars
+        for sx, sy, vx, vy, life in self._shoot:
+            x = sx * w; y = sy * h
+            tx = x - vx * w * 8; ty = y - vy * h * 8
+            grad_l = QtGui.QLinearGradient(tx, ty, x, y)
+            grad_l.setColorAt(0.0, QtGui.QColor(0, 225, 255, 0))
+            grad_l.setColorAt(1.0, QtGui.QColor(180, 240, 255, int(220 * life)))
+            pen = QtGui.QPen(QtGui.QBrush(grad_l), 1.8)
+            p.setPen(pen); p.drawLine(QtCore.QPointF(tx, ty), QtCore.QPointF(x, y))
+            p.fillRect(QtCore.QRectF(x - 1, y - 1, 2.5, 2.5),
+                       QtGui.QColor(255, 255, 255, int(255 * life)))
+
         # Subtle radial vignette
-        rg = QtGui.QRadialGradient(w / 2, h / 2, max(w, h) * 0.7)
+        rg = QtGui.QRadialGradient(w / 2, h / 2, max(w, h) * 0.75)
         rg.setColorAt(0.0, QtGui.QColor(0, 0, 0, 0))
-        rg.setColorAt(1.0, QtGui.QColor(0, 0, 0, 180))
+        rg.setColorAt(1.0, QtGui.QColor(0, 0, 0, 200))
         p.fillRect(0, 0, w, h, rg)
 
         # Moving scan line
         sy = int((self._scan_y / 100) * h)
-        line_grad = QtGui.QLinearGradient(0, sy - 30, 0, sy + 30)
+        line_grad = QtGui.QLinearGradient(0, sy - 40, 0, sy + 40)
         line_grad.setColorAt(0.0, QtGui.QColor(0, 225, 255, 0))
-        line_grad.setColorAt(0.5, QtGui.QColor(0, 225, 255, 35))
+        line_grad.setColorAt(0.5, QtGui.QColor(0, 225, 255, 30))
         line_grad.setColorAt(1.0, QtGui.QColor(0, 225, 255, 0))
-        p.fillRect(0, sy - 30, w, 60, line_grad)
+        p.fillRect(0, sy - 40, w, 80, line_grad)
 
 
 # ---------- Reactor ----------
@@ -262,6 +296,154 @@ class LevelBar(QtWidgets.QWidget):
         p.drawLine(px, 1, px, h - 2)
 
 
+# ---------- L-shaped corner brackets that frame the reactor ----------
+class CornerBrackets(QtWidgets.QWidget):
+    """Animated L-brackets in the four corners around the reactor."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        self._phase = 0.0
+        t = QtCore.QTimer(self); t.timeout.connect(self._tick); t.start(40)
+
+    def _tick(self):
+        self._phase += 0.05
+        self.update()
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self); p.setRenderHint(QtGui.QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        c = ACCENT
+        pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(self._phase * 1.5))
+        col = QtGui.QColor(c.red(), c.green(), c.blue(), int(220 * pulse))
+        pen = QtGui.QPen(col, 2); pen.setCapStyle(QtCore.Qt.FlatCap)
+        p.setPen(pen)
+        L = 36; pad = 6
+        # 4 corners
+        # top-left
+        p.drawLine(pad, pad, pad + L, pad)
+        p.drawLine(pad, pad, pad, pad + L)
+        # top-right
+        p.drawLine(w - pad, pad, w - pad - L, pad)
+        p.drawLine(w - pad, pad, w - pad, pad + L)
+        # bottom-left
+        p.drawLine(pad, h - pad, pad + L, h - pad)
+        p.drawLine(pad, h - pad, pad, h - pad - L)
+        # bottom-right
+        p.drawLine(w - pad, h - pad, w - pad - L, h - pad)
+        p.drawLine(w - pad, h - pad, w - pad, h - pad - L)
+        # tiny pip squares inside each corner
+        p.setBrush(QtGui.QColor(c.red(), c.green(), c.blue(), 200))
+        p.setPen(QtCore.Qt.NoPen)
+        s = 3
+        for cx, cy in [(pad + 8, pad + 8), (w - pad - 8 - s, pad + 8),
+                        (pad + 8, h - pad - 8 - s), (w - pad - 8 - s, h - pad - 8 - s)]:
+            p.fillRect(QtCore.QRectF(cx, cy, s, s),
+                       QtGui.QColor(c.red(), c.green(), c.blue(), 220))
+
+
+# ---------- Voiceprint vertical bars (flank the reactor) ----------
+class VoicePrint(QtWidgets.QWidget):
+    """Two columns of vertical bars that pulse with mic level."""
+    def __init__(self, parent=None, mirror=False):
+        super().__init__(parent)
+        self.setFixedWidth(36)
+        self._n = 22
+        self._bars = [0.05] * self._n
+        self._target = [0.05] * self._n
+        self._phase = 0.0
+        self._mirror = mirror
+        t = QtCore.QTimer(self); t.timeout.connect(self._tick); t.start(34)
+
+    def set_amp(self, a):
+        a = max(0.04, min(1.0, a))
+        for i in range(self._n):
+            base = a * (0.5 + 0.5 * math.sin(self._phase * 1.3 + i * 0.55 + (1 if self._mirror else 0)))
+            self._target[i] = max(0.05, min(1.0, base + a * random.random() * 0.4))
+
+    def _tick(self):
+        self._phase += 0.06
+        for i in range(self._n):
+            self._bars[i] += (self._target[i] - self._bars[i]) * 0.25
+            self._target[i] *= 0.93
+        self.update()
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self); p.setRenderHint(QtGui.QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        bar_h = h / self._n
+        c = ACCENT
+        for i, v in enumerate(self._bars):
+            bw = v * (w - 6)
+            x = (w - bw) if self._mirror else 3
+            y = i * bar_h + 1
+            grad = QtGui.QLinearGradient(x, 0, x + bw, 0)
+            if self._mirror:
+                grad.setColorAt(0.0, QtGui.QColor(c.red(), c.green(), c.blue(), 30))
+                grad.setColorAt(1.0, QtGui.QColor(c.red(), c.green(), c.blue(), 220))
+            else:
+                grad.setColorAt(0.0, QtGui.QColor(c.red(), c.green(), c.blue(), 220))
+                grad.setColorAt(1.0, QtGui.QColor(c.red(), c.green(), c.blue(), 30))
+            p.fillRect(QtCore.QRectF(x, y, bw, bar_h - 2), QtGui.QBrush(grad))
+
+
+# ---------- Telemetry ticker strip ----------
+class TelemetryStrip(QtWidgets.QWidget):
+    """Scrolling fake-telemetry ticker shown across the bottom."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(20)
+        self._offset = 0.0
+        self._messages = self._gen()
+        self._text = "  ◆  ".join(self._messages)
+        t = QtCore.QTimer(self); t.timeout.connect(self._tick); t.start(40)
+        # refresh telemetry strings periodically
+        t2 = QtCore.QTimer(self); t2.timeout.connect(self._refresh); t2.start(7000)
+
+    def _gen(self):
+        msgs = [
+            f"SYS {random.choice(['NOMINAL','GREEN','READY','ONLINE'])}",
+            f"REACTOR {random.randint(82, 99)}%",
+            f"COGNITION {random.uniform(2.1, 5.7):.2f} TFLOPS",
+            f"COMMS {random.choice(['LINK STABLE','HANDSHAKE OK','ENCRYPTED'])}",
+            f"UPTIME {random.randint(1,72)}h{random.randint(0,59):02d}m",
+            f"MEM POOL {random.randint(1, 16)}.{random.randint(0,9)} GB",
+            f"GPS LOCK {random.randint(8, 14)} SAT",
+            f"CORE TEMP {random.randint(38, 56)}°C",
+            f"NET LATENCY {random.randint(7, 42)} ms",
+            f"AI LAYERS {random.randint(96, 256)}",
+            f"VOICE BIOMETRIC {random.randint(95,99)}%",
+            f"AUDIO IN -{random.randint(8, 36)} dB",
+            f"SCAN PASS #{random.randint(1000,9999)}",
+            f"AGENT {random.choice(['ACTIVE','LISTENING','IDLE'])}",
+        ]
+        random.shuffle(msgs)
+        return msgs
+
+    def _refresh(self):
+        self._messages = self._gen()
+        self._text = "  ◆  ".join(self._messages)
+
+    def _tick(self):
+        self._offset = (self._offset + 1.2) % 10000
+        self.update()
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self); p.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        w, h = self.width(), self.height()
+        p.fillRect(0, 0, w, h, QtGui.QColor(0, 14, 22, 180))
+        c = ACCENT
+        p.setPen(QtGui.QPen(QtGui.QColor(c.red(), c.green(), c.blue(), 80), 1))
+        p.drawLine(0, 0, w, 0); p.drawLine(0, h - 1, w, h - 1)
+        f = QtGui.QFont("Consolas", 9); p.setFont(f)
+        fm = QtGui.QFontMetricsF(f)
+        tw = fm.horizontalAdvance(self._text) + 80
+        x = -(self._offset % tw)
+        p.setPen(QtGui.QColor(c.red(), c.green(), c.blue(), 220))
+        # draw twice for seamless scrolling
+        p.drawText(QtCore.QPointF(x, h - 6), self._text)
+        p.drawText(QtCore.QPointF(x + tw, h - 6), self._text)
+
+
 # ---------- HUD info panels ----------
 class InfoPanel(QtWidgets.QFrame):
     """Holographic-style info panel with title + value, used for clock/CPU/etc."""
@@ -313,13 +495,31 @@ class JarvisWindow(QtWidgets.QWidget):
 
         # ===== CENTER: reactor + status =====
         center = QtWidgets.QVBoxLayout(); center.setSpacing(10)
+        # reactor row: voiceprint | reactor (with corner brackets) | voiceprint
+        reactor_row = QtWidgets.QHBoxLayout(); reactor_row.setSpacing(6)
+        self.vp_left = VoicePrint(mirror=True)
         self.reactor = ReactorCore()
+        self.vp_right = VoicePrint(mirror=False)
+        # wrap reactor in a stack so brackets overlay it
+        reactor_wrap = QtWidgets.QWidget()
+        wrap_layout = QtWidgets.QGridLayout(reactor_wrap)
+        wrap_layout.setContentsMargins(0, 0, 0, 0)
+        wrap_layout.addWidget(self.reactor, 0, 0)
+        self.brackets = CornerBrackets(reactor_wrap)
+        self.brackets.setGeometry(0, 0, 10, 10)
+        reactor_wrap.installEventFilter(self)
+        self._reactor_wrap = reactor_wrap
+        reactor_row.addWidget(self.vp_left)
+        reactor_row.addWidget(reactor_wrap, 1)
+        reactor_row.addWidget(self.vp_right)
         self.status = QtWidgets.QLabel("STANDBY")
         self.status.setAlignment(QtCore.Qt.AlignCenter); self.status.setObjectName("status")
         self.spectrum = Spectrum()
-        center.addWidget(self.reactor, 1)
+        self.telemetry = TelemetryStrip()
+        center.addLayout(reactor_row, 1)
         center.addWidget(self.status)
         center.addWidget(self.spectrum)
+        center.addWidget(self.telemetry)
         root.addLayout(center, 2)
 
         # ===== RIGHT: title, transcript, controls =====
@@ -378,6 +578,12 @@ class JarvisWindow(QtWidgets.QWidget):
         self.bg.setGeometry(self.rect())
         super().resizeEvent(e)
 
+    def eventFilter(self, obj, ev):
+        if obj is getattr(self, "_reactor_wrap", None) and ev.type() == QtCore.QEvent.Resize:
+            self.brackets.setGeometry(0, 0, obj.width(), obj.height())
+            self.brackets.raise_()
+        return super().eventFilter(obj, ev)
+
     def _on_device_change(self, row):
         idx = self.device_combo.itemData(row)
         if idx is not None:
@@ -397,6 +603,8 @@ class JarvisWindow(QtWidgets.QWidget):
     def set_mic_level(self, v):
         self.level.set_level(v)
         self.spectrum.set_amp(max(0.05, v))
+        self.vp_left.set_amp(max(0.05, v))
+        self.vp_right.set_amp(max(0.05, v))
 
     def _refresh_info(self):
         now = datetime.datetime.now()
@@ -455,8 +663,11 @@ class JarvisWindow(QtWidgets.QWidget):
         labels = {"idle": "STANDBY", "listening": "LISTENING…",
                   "thinking": "COGITATING…", "speaking": "SPEAKING…"}
         self.status.setText(labels.get(mode, mode.upper()))
-        self.spectrum.set_amp({"idle": 0.06, "listening": 0.55,
-                               "thinking": 0.4, "speaking": 0.85}.get(mode, 0.1))
+        amp = {"idle": 0.06, "listening": 0.55,
+               "thinking": 0.4, "speaking": 0.85}.get(mode, 0.1)
+        self.spectrum.set_amp(amp)
+        self.vp_left.set_amp(amp)
+        self.vp_right.set_amp(amp)
 
     def _qss(self, accent="#00e1ff"):
         return f"""
