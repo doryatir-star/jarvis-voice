@@ -3,10 +3,13 @@ import re
 import subprocess
 import webbrowser
 import urllib.parse
+import urllib.request
+import json
 import ctypes
 import datetime
 import threading
 import difflib
+import random
 from pathlib import Path
 
 
@@ -432,6 +435,189 @@ def system_action(action: str) -> str:
     return f"I don't know how to {action}."
 
 
+# ---------- New cool commands ----------
+
+def weather(location: str) -> str:
+    loc = (location or "").strip() or ""
+    try:
+        url = f"https://wttr.in/{urllib.parse.quote(loc)}?format=j1"
+        req = urllib.request.Request(url, headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode("utf-8", "ignore"))
+        cur = data["current_condition"][0]
+        area = data.get("nearest_area", [{}])[0]
+        place = area.get("areaName", [{"value": loc or "your location"}])[0]["value"]
+        desc = cur["weatherDesc"][0]["value"]
+        temp_c = cur["temp_C"]
+        feels = cur["FeelsLikeC"]
+        wind = cur["windspeedKmph"]
+        return f"In {place} it's {temp_c} degrees Celsius and {desc.lower()}. Feels like {feels}. Wind {wind} kilometres per hour."
+    except Exception as e:
+        return f"Couldn't fetch the weather. {e}"
+
+
+def timer(value: str) -> str:
+    """value like '5 minutes' or '30 seconds'."""
+    v = (value or "").strip().lower()
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(second|sec|s|minute|min|m|hour|hr|h)\b", v)
+    if not m:
+        return "How long? Try 'set a timer for 5 minutes'."
+    n = float(m.group(1))
+    unit = m.group(2)
+    secs = n * (1 if unit.startswith(("s", "sec")) else 60 if unit.startswith(("m", "min")) else 3600)
+    label = f"{int(n)} {unit}" + ("s" if n != 1 and not unit.endswith("s") else "")
+
+    def _fire():
+        try:
+            ctypes.windll.user32.MessageBeep(0xFFFFFFFF)
+            ctypes.windll.user32.MessageBoxW(0, f"⏰ Your timer for {label} is up.", "Jarvis Timer", 0x40 | 0x40000)
+        except Exception:
+            pass
+
+    threading.Timer(secs, _fire).start()
+    return f"Timer set for {label}."
+
+
+def calculator(expr: str) -> str:
+    """Safe arithmetic evaluator: + - * / ** % () and float/int."""
+    e = (expr or "").lower()
+    e = (e.replace("plus", "+").replace("minus", "-")
+           .replace("times", "*").replace("multiplied by", "*")
+           .replace("divided by", "/").replace("over", "/")
+           .replace("squared", "**2").replace("cubed", "**3")
+           .replace("to the power of", "**").replace("power of", "**")
+           .replace("modulo", "%").replace("mod", "%")
+           .replace("x", "*"))
+    e = re.sub(r"[^0-9+\-*/().% ]", "", e).strip()
+    if not e:
+        return "Calculate what?"
+    try:
+        result = eval(e, {"__builtins__": {}}, {})
+        if isinstance(result, float) and result.is_integer():
+            result = int(result)
+        return f"{expr.strip()} equals {result}."
+    except Exception:
+        return f"I couldn't compute {expr}."
+
+
+def joke() -> str:
+    try:
+        req = urllib.request.Request(
+            "https://official-joke-api.appspot.com/random_joke",
+            headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            j = json.loads(r.read().decode("utf-8", "ignore"))
+        return f"{j['setup']} ... {j['punchline']}"
+    except Exception:
+        return random.choice([
+            "I told my computer I needed a break. It said 'no problem, I'll go to sleep'.",
+            "Why did the developer go broke? Because he used up all his cache.",
+            "There are 10 types of people in the world: those who understand binary, and those who don't.",
+        ])
+
+
+def news() -> str:
+    """Top headline from Hacker News (no key)."""
+    try:
+        req = urllib.request.Request(
+            "https://hacker-news.firebaseio.com/v0/topstories.json",
+            headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            ids = json.loads(r.read().decode("utf-8"))
+        titles = []
+        for sid in ids[:3]:
+            req = urllib.request.Request(
+                f"https://hacker-news.firebaseio.com/v0/item/{sid}.json",
+                headers={"User-Agent": "Jarvis/2.0"})
+            with urllib.request.urlopen(req, timeout=5) as r:
+                item = json.loads(r.read().decode("utf-8"))
+                if item and item.get("title"):
+                    titles.append(item["title"])
+        if titles:
+            return "Top headlines: " + ". ".join(titles[:3]) + "."
+    except Exception:
+        pass
+    return "I couldn't reach the news."
+
+
+def translate(value: str) -> str:
+    """value like 'hello to spanish' or 'good morning to french'."""
+    m = re.search(r"^(.*)\s+(?:to|in|into)\s+(\w+)$", (value or "").strip(), re.I)
+    if not m:
+        return "Try 'translate hello to Spanish'."
+    text, lang = m.group(1).strip(), m.group(2).strip().lower()
+    code_map = {
+        "spanish": "es", "french": "fr", "german": "de", "italian": "it",
+        "portuguese": "pt", "japanese": "ja", "chinese": "zh-CN", "korean": "ko",
+        "russian": "ru", "arabic": "ar", "hebrew": "he", "dutch": "nl",
+        "polish": "pl", "turkish": "tr", "hindi": "hi", "english": "en",
+    }
+    code = code_map.get(lang, lang)
+    try:
+        url = ("https://api.mymemory.translated.net/get?q="
+               + urllib.parse.quote(text) + f"&langpair=en|{code}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Jarvis/2.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode("utf-8", "ignore"))
+        out = data.get("responseData", {}).get("translatedText")
+        if out:
+            return f"In {lang}: {out}"
+    except Exception:
+        pass
+    return "Translation service unreachable."
+
+
+def system_stats() -> str:
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=0.4)
+        mem = psutil.virtual_memory().percent
+        disk = psutil.disk_usage('/').percent
+        return f"CPU at {cpu:.0f} percent. Memory {mem:.0f} percent. Disk {disk:.0f} percent."
+    except Exception:
+        return "System stats unavailable."
+
+
+def type_text(text: str) -> str:
+    """Type text into the currently focused window after a short delay."""
+    if not text:
+        return "Type what?"
+
+    def _do():
+        import time
+        time.sleep(1.5)
+        for ch in text:
+            vk = ctypes.windll.user32.VkKeyScanW(ord(ch))
+            if vk == -1: continue
+            shift = (vk >> 8) & 1
+            key = vk & 0xFF
+            if shift: ctypes.windll.user32.keybd_event(0x10, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(key, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(key, 0, 2, 0)
+            if shift: ctypes.windll.user32.keybd_event(0x10, 0, 2, 0)
+            time.sleep(0.012)
+
+    threading.Thread(target=_do, daemon=True).start()
+    return f"Typing in 1.5 seconds — focus the target window now."
+
+
+def flip_coin() -> str:
+    return "Heads." if random.random() < 0.5 else "Tails."
+
+
+def roll_dice(value: str) -> str:
+    m = re.match(r"(\d*)d(\d+)", (value or "").lower().strip())
+    if m:
+        n = int(m.group(1) or "1")
+        sides = int(m.group(2))
+    else:
+        n, sides = 1, 6
+    if n > 20 or sides > 1000: return "Too many dice."
+    rolls = [random.randint(1, sides) for _ in range(n)]
+    if n == 1: return f"You rolled a {rolls[0]}."
+    return f"You rolled {sum(rolls)} ({', '.join(map(str, rolls))})."
+
+
 def execute(action: str, value: str) -> str:
     a = (action or "").lower()
     v = value or ""
@@ -440,4 +626,14 @@ def execute(action: str, value: str) -> str:
     if a == "search_web": return search_web(v)
     if a == "youtube": return youtube_search(v)
     if a == "system": return system_action(v)
+    if a == "weather": return weather(v)
+    if a == "timer": return timer(v)
+    if a == "calc": return calculator(v)
+    if a == "joke": return joke()
+    if a == "news": return news()
+    if a == "translate": return translate(v)
+    if a == "stats": return system_stats()
+    if a == "type": return type_text(v)
+    if a == "coin": return flip_coin()
+    if a == "dice": return roll_dice(v)
     return ""

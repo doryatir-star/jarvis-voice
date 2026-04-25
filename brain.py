@@ -157,6 +157,66 @@ class Brain:
     def think(self, raw: str) -> dict:
         t = _strip_prefixes(raw)
 
+        # ----- New cool commands first (more specific patterns) -----
+
+        # Weather
+        m = re.match(r"(?:what's |what is |how is )?(?:the )?weather(?: like)?(?: in (.+))?$", t)
+        if m:
+            loc = (m.group(1) or "").strip()
+            return {"action": "weather", "value": loc, "speak": ""}
+        if t.startswith("weather "):
+            return {"action": "weather", "value": t[8:].strip(), "speak": ""}
+
+        # Timer
+        m = re.match(r"(?:set (?:a )?|start (?:a )?)?timer (?:for |of )?(.+)$", t)
+        if m:
+            return {"action": "timer", "value": m.group(1).strip(), "speak": ""}
+        m = re.match(r"remind me in (.+)", t)
+        if m:
+            return {"action": "timer", "value": m.group(1).strip(), "speak": ""}
+
+        # Calculator
+        m = re.match(r"(?:calculate|compute|what(?:'s| is)) (.+)$", t)
+        if m and re.search(r"[\d+\-*/x%]|plus|minus|times|divided|squared|cubed|power", m.group(1)):
+            return {"action": "calc", "value": m.group(1).strip("?. "), "speak": ""}
+        # bare arithmetic like "5 plus 3" or "12 times 4"
+        if re.fullmatch(r"[\d\s+\-*/x%().]+", t) and re.search(r"\d", t) and re.search(r"[+\-*/x%]", t):
+            return {"action": "calc", "value": t, "speak": ""}
+
+        # Joke
+        if re.search(r"\b(tell me a joke|joke|make me laugh|something funny)\b", t):
+            return {"action": "joke", "value": "", "speak": ""}
+
+        # News
+        if re.search(r"\b(news|headlines|what's happening|what is happening)\b", t):
+            return {"action": "news", "value": "", "speak": ""}
+
+        # Translate
+        m = re.match(r"(?:translate )(.+?)(?:\s+(?:to|in|into)\s+(\w+))$", t)
+        if m:
+            return {"action": "translate", "value": f"{m.group(1)} to {m.group(2)}", "speak": ""}
+
+        # System stats
+        if re.search(r"\b(system stats|system status|cpu|memory usage|how is the system)\b", t):
+            return {"action": "stats", "value": "", "speak": ""}
+
+        # Type text
+        m = re.match(r"(?:type|write) (.+)$", t)
+        if m:
+            return {"action": "type", "value": m.group(1).strip("\"' "), "speak": ""}
+
+        # Coin / dice
+        if re.search(r"\b(flip a coin|coin flip|toss a coin)\b", t):
+            return {"action": "coin", "value": "", "speak": ""}
+        m = re.match(r"roll (?:a )?(?:die|dice|d(\d+)|(\d+) ?d ?(\d+))$", t)
+        if m:
+            spec = "1d6"
+            if m.group(1): spec = f"1d{m.group(1)}"
+            elif m.group(2) and m.group(3): spec = f"{m.group(2)}d{m.group(3)}"
+            return {"action": "dice", "value": spec, "speak": ""}
+        if "roll the dice" in t or "roll dice" in t:
+            return {"action": "dice", "value": "1d6", "speak": ""}
+
         sys_action = _match_system(t)
         if sys_action:
             return {"action": "system", "value": sys_action, "speak": self._sys_speak(sys_action)}
