@@ -8,7 +8,7 @@
 <!-- PWA -->
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#ff5ca8" />
-<meta name="description" content="חנות מוצרים ואביזרים — הזמנה נוחה ב-SMS, קופון 15 ₪ הנחה." />
+<meta name="description" content="חנות מוצרים ואביזרים — הזמנה נוחה ב-WhatsApp, קופון 15 ₪ הנחה." />
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="icon" href="icon-192.png" sizes="192x192" type="image/png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -209,8 +209,13 @@
   }
   .send-btn:active { transform: scale(.99); }
   .send-btn[disabled] { opacity: .5; box-shadow: none; cursor: not-allowed; }
-  .send-alt { margin-top: 10px; text-align: center; font-size: 13px; color: var(--dim); }
-  .send-alt a { color: var(--purple); font-weight: 700; text-decoration: none; margin: 0 6px; }
+  .send-alt { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .send-alt .wa-link {
+    display: block; text-align: center; text-decoration: none;
+    background: #e9fbf0; color: #128c4a; font-weight: 800; font-size: 14px;
+    padding: 11px 0; border-radius: 12px; border: 1.5px solid #b6ecca;
+  }
+  .send-alt .wa-link:active { background: #d4f6e0; }
   .send-note { text-align: center; font-size: 12px; color: var(--dim); margin-top: 12px; line-height: 1.5; }
 
   .clear-btn { display: block; margin: 14px auto 0; background: none; border: none; color: var(--dim); font-size: 13px; text-decoration: underline; cursor: pointer; }
@@ -245,7 +250,7 @@
   <div class="grid" id="grid-beads"></div>
 </main>
 
-<footer>בנוי באהבה 💗 — הזמנות נשלחות ב-SMS ישירות אלינו</footer>
+<footer>בנוי באהבה 💗 — הזמנות נשלחות ב-WhatsApp ישירות אלינו</footer>
 
 <!-- Floating cart bar -->
 <div class="cartbar hidden" id="cartbar">
@@ -273,11 +278,11 @@
 
     <div class="summary" id="summary"></div>
 
-    <button class="send-btn" id="sendBtn">📲 שלח הזמנה ב-SMS</button>
+    <button class="send-btn" id="sendBtn">💬 שלח הזמנה ב-WhatsApp</button>
     <div class="send-alt" id="sendAlt"></div>
     <p class="send-note">
-      לחיצה על הכפתור פותחת את אפליקציית ההודעות עם ההזמנה מוכנה. אם השליחה לשני המספרים יחד לא עובדת
-      במכשיר שלכם — השתמשו בקישורי הגיבוי לכל מספר בנפרד.
+      לחיצה על הכפתור פותחת את WhatsApp עם ההזמנה מוכנה לשליחה. אפשר לבחור לאיזה מספר לשלוח
+      מתוך הכפתורים למעלה.
     </p>
     <button class="clear-btn" id="clearCart">רוקן עגלה</button>
   </div>
@@ -488,25 +493,31 @@ function buildMessage() {
   return lines.join("\n");
 }
 
-// בונה קישור sms: עבור נמען/ים. iOS משתמש ב-&body, אנדרואיד ב-?body — נשתמש ב-?body שעובד ברובם.
-function smsLink(numbers, body) {
-  const to = Array.isArray(numbers) ? numbers.join(",") : numbers;
-  return `sms:${to}?&body=${encodeURIComponent(body)}`;
+// ממיר מספר ישראלי לפורמט בינלאומי ל-WhatsApp: מסיר תווים שאינם ספרות, ומחליף 0 מוביל ב-972.
+function waNumber(ph) {
+  let digits = (ph || "").replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = "972" + digits.slice(1);
+  return digits;
+}
+// בונה קישור WhatsApp (wa.me) עם הודעת ההזמנה. WhatsApp שולח למספר אחד בכל פעם.
+function waLink(ph, body) {
+  return `https://wa.me/${waNumber(ph)}?text=${encodeURIComponent(body)}`;
 }
 
 function renderSendLinks() {
   const alt = document.getElementById("sendAlt");
   const body = buildMessage();
-  const links = CONFIG.phones
-    .map(ph => `<a href="${smsLink(ph, body)}">${ph}</a>`)
-    .join(" · ");
-  alt.innerHTML = `קישורי גיבוי (מספר בודד): ${links}`;
+  const buttons = CONFIG.phones
+    .map(ph => `<a class="wa-link" href="${waLink(ph, body)}" target="_blank" rel="noopener">💬 שלח ל-${ph}</a>`)
+    .join("");
+  alt.innerHTML = buttons;
 }
 
 function sendOrder() {
   if (Object.keys(cart).length === 0) return;
   const body = buildMessage();
-  window.location.href = smsLink(CONFIG.phones, body);
+  // WhatsApp הוא חד-נמען — הכפתור הראשי שולח למספר הראשון; קישור לכל מספר מופיע למטה.
+  window.open(waLink(CONFIG.phones[0], body), "_blank", "noopener");
 }
 
 /* ===================== EVENTS ===================== */
