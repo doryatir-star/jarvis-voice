@@ -499,6 +499,8 @@ function waNumber(ph) {
   if (digits.startsWith("0")) digits = "972" + digits.slice(1);
   return digits;
 }
+// מספר WhatsApp ישראלי תקין = 972 + 9 ספרות = 12 ספרות בסך הכל.
+function isValidWa(ph) { return waNumber(ph).length === 12; }
 // בונה קישור WhatsApp (wa.me) עם הודעת ההזמנה. WhatsApp שולח למספר אחד בכל פעם.
 function waLink(ph, body) {
   return `https://wa.me/${waNumber(ph)}?text=${encodeURIComponent(body)}`;
@@ -516,8 +518,9 @@ function renderSendLinks() {
 function sendOrder() {
   if (Object.keys(cart).length === 0) return;
   const body = buildMessage();
-  // WhatsApp הוא חד-נמען — הכפתור הראשי שולח למספר הראשון; קישור לכל מספר מופיע למטה.
-  window.open(waLink(CONFIG.phones[0], body), "_blank", "noopener");
+  // WhatsApp הוא חד-נמען — הכפתור הראשי שולח למספר התקין הראשון (כדי שתמיד יעבוד).
+  const target = CONFIG.phones.find(isValidWa) || CONFIG.phones[0];
+  window.location.href = waLink(target, body);
 }
 
 /* ===================== EVENTS ===================== */

@@ -1,5 +1,5 @@
 // Store service worker — installable PWA + offline shell.
-const CACHE = "store-v1";
+const CACHE = "store-v2";
 const SHELL = [
   "./",
   "./index.html",
@@ -29,6 +29,23 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   // Only handle same-origin GETs.
   if (url.origin !== self.location.origin) return;
+
+  const isHTML = req.mode === "navigate" ||
+    (req.headers.get("accept") || "").includes("text/html");
+
+  if (isHTML) {
+    // Network-first for the page itself, so updates always show.
+    e.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then((h) => h || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, manifest).
   e.respondWith(
     caches.match(req).then((hit) => {
       if (hit) return hit;
