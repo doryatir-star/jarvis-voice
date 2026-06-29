@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>החנות שלי — מוצרים ואביזרים</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#ff5ca8" />
+<meta name="description" content="חנות מוצרים ואביזרים — הזמנה נוחה ב-SMS, קופון 15 ₪ הנחה." />
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="החנות שלי" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="application-name" content="החנות שלי" />
+
+<style>
+  :root {
+    --pink: #ff5ca8;
+    --pink-dark: #e23e8c;
+    --purple: #7b5cff;
+    --bg: #fff5fa;
+    --bg2: #ffffff;
+    --card: #ffffff;
+    --text: #2a2030;
+    --dim: #8a7d92;
+    --line: #f0d9e6;
+    --green: #20bf6b;
+    --shadow: 0 6px 22px rgba(180, 70, 130, .12);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: linear-gradient(180deg, #fff0f7 0%, var(--bg) 40%);
+    color: var(--text);
+    font-family: "Heebo", "Rubik", "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding-bottom: 96px; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: linear-gradient(120deg, var(--pink) 0%, var(--purple) 100%);
+    color: #fff;
+    padding: 18px 18px 16px;
+    border-radius: 0 0 26px 26px;
+    box-shadow: 0 6px 20px rgba(180, 70, 130, .28);
+  }
+  header .brand { display: flex; align-items: center; gap: 10px; }
+  header .logo { font-size: 30px; line-height: 1; }
+  header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: .01em; }
+  header .tag { margin: 2px 0 0; font-size: 13px; opacity: .92; }
+
+  /* Coupon banner */
+  .coupon-banner {
+    margin: 12px 0 0;
+    background: rgba(255,255,255,.18);
+    border: 1.5px dashed rgba(255,255,255,.7);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px;
+  }
+  .coupon-banner b { font-size: 15px; }
+  .coupon-banner .code {
+    background: #fff; color: var(--pink-dark);
+    font-weight: 800; letter-spacing: .08em;
+    padding: 3px 10px; border-radius: 8px; font-size: 14px;
+  }
+
+  main { max-width: 760px; margin: 0 auto; padding: 16px 14px 0; }
+
+  .section-title {
+    display: flex; align-items: center; gap: 8px;
+    margin: 22px 4px 12px; font-size: 19px; font-weight: 800; color: var(--pink-dark);
+  }
+  .section-title .ico { font-size: 22px; }
+
+  /* Product grid */
+  .grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 12px 12px;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 8px;
+    position: relative; overflow: hidden;
+  }
+  .card .emoji {
+    font-size: 40px; line-height: 1; text-align: center;
+    height: 56px; display: flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+  }
+  .card .name { font-size: 14.5px; font-weight: 700; line-height: 1.3; min-height: 38px; }
+  .card .price { font-size: 16px; font-weight: 800; color: var(--purple); }
+
+  /* Qty control */
+  .qty { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .qty .add {
+    flex: 1; border: none; cursor: pointer;
+    background: linear-gradient(120deg, var(--pink), var(--pink-dark));
+    color: #fff; font-weight: 800; font-size: 14px;
+    padding: 9px 0; border-radius: 11px;
+    box-shadow: 0 4px 12px rgba(226,62,140,.32);
+    transition: transform .08s;
+  }
+  .qty .add:active { transform: scale(.96); }
+  .stepper { display: none; align-items: center; gap: 0; width: 100%;
+    border: 1.5px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .stepper.on { display: flex; }
+  .qty.has .add { display: none; }
+  .stepper button {
+    border: none; background: #ffeaf4; color: var(--pink-dark);
+    font-size: 20px; font-weight: 800; width: 38px; height: 38px; cursor: pointer;
+  }
+  .stepper button:active { background: #ffd6ea; }
+  .stepper .n { flex: 1; text-align: center; font-weight: 800; font-size: 15px; }
+
+  /* Floating cart bar */
+  .cartbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(255,255,255,0), #fff 30%);
+  }
+  .cartbar-inner {
+    max-width: 760px; margin: 0 auto;
+    background: linear-gradient(120deg, var(--pink-dark), var(--purple));
+    color: #fff; border-radius: 16px; padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    box-shadow: 0 8px 26px rgba(123,92,255,.4); cursor: pointer;
+    transition: transform .1s;
+  }
+  .cartbar-inner:active { transform: scale(.99); }
+  .cartbar-inner .left { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .cartbar-inner .count {
+    background: #fff; color: var(--pink-dark); min-width: 26px; height: 26px;
+    border-radius: 13px; display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; padding: 0 7px;
+  }
+  .cartbar-inner .total { font-weight: 800; font-size: 17px; }
+  .cartbar.hidden { transform: translateY(140%); }
+
+  /* Cart overlay / sheet */
+  .overlay {
+    position: fixed; inset: 0; z-index: 40; background: rgba(40,20,40,.45);
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .overlay.on { display: flex; }
+  .sheet {
+    background: var(--bg2); width: 100%; max-width: 760px;
+    border-radius: 22px 22px 0 0; max-height: 92vh; overflow-y: auto;
+    padding: 6px 16px calc(20px + env(safe-area-inset-bottom));
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet .grab { width: 44px; height: 5px; background: var(--line); border-radius: 3px; margin: 8px auto 6px; }
+  .sheet h2 { margin: 6px 2px 12px; font-size: 20px; font-weight: 800; }
+
+  .cart-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--line);
+  }
+  .cart-item .ci-emoji { font-size: 26px; }
+  .cart-item .ci-info { flex: 1; }
+  .cart-item .ci-name { font-weight: 700; font-size: 14.5px; }
+  .cart-item .ci-price { color: var(--dim); font-size: 13px; }
+  .cart-item .ci-stepper { display: flex; align-items: center; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .cart-item .ci-stepper button { border: none; background: #ffeaf4; color: var(--pink-dark); width: 32px; height: 32px; font-size: 18px; font-weight: 800; cursor: pointer; }
+  .cart-item .ci-stepper .n { width: 30px; text-align: center; font-weight: 800; }
+  .cart-empty { text-align: center; color: var(--dim); padding: 40px 10px; }
+  .cart-empty .big { font-size: 46px; }
+
+  /* Coupon input */
+  .coupon-box { margin: 16px 0 6px; }
+  .coupon-box label { font-weight: 700; font-size: 14px; display: block; margin-bottom: 6px; }
+  .coupon-row { display: flex; gap: 8px; }
+  .coupon-row input {
+    flex: 1; border: 1.5px solid var(--line); border-radius: 11px;
+    padding: 11px 12px; font-size: 15px; font-family: inherit; text-align: right;
+  }
+  .coupon-row input:focus { outline: none; border-color: var(--pink); }
+  .coupon-row button {
+    border: none; background: var(--purple); color: #fff; font-weight: 800;
+    padding: 0 18px; border-radius: 11px; cursor: pointer; font-size: 14px;
+  }
+  .coupon-msg { font-size: 13px; margin: 8px 2px 0; min-height: 18px; }
+  .coupon-msg.ok { color: var(--green); font-weight: 700; }
+  .coupon-msg.err { color: var(--pink-dark); font-weight: 700; }
+
+  /* Summary */
+  .summary { margin: 14px 0; padding: 14px; background: #fff6fb; border: 1px solid var(--line); border-radius: 14px; }
+  .summary .row { display: flex; justify-content: space-between; font-size: 14.5px; padding: 4px 0; }
+  .summary .row.disc { color: var(--green); font-weight: 700; }
+  .summary .row.total { font-size: 19px; font-weight: 800; border-top: 1.5px dashed var(--line); margin-top: 6px; padding-top: 10px; }
+
+  .send-btn {
+    display: block; width: 100%; border: none; cursor: pointer;
+    background: linear-gradient(120deg, var(--green), #16a085); color: #fff;
+    font-size: 17px; font-weight: 800; padding: 15px 0; border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(32,191,107,.4); margin-top: 4px;
+  }
+  .send-btn:active { transform: scale(.99); }
+  .send-btn[disabled] { opacity: .5; box-shadow: none; cursor: not-allowed; }
+  .send-alt { margin-top: 10px; text-align: center; font-size: 13px; color: var(--dim); }
+  .send-alt a { color: var(--purple); font-weight: 700; text-decoration: none; margin: 0 6px; }
+  .send-note { text-align: center; font-size: 12px; color: var(--dim); margin-top: 12px; line-height: 1.5; }
+
+  .clear-btn { display: block; margin: 14px auto 0; background: none; border: none; color: var(--dim); font-size: 13px; text-decoration: underline; cursor: pointer; }
+
+  footer { text-align: center; color: var(--dim); font-size: 12px; padding: 26px 14px 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo">🛍️</span>
+    <div>
+      <h1>החנות שלי</h1>
+      <p class="tag">כל המוצרים והאביזרים במקום אחד</p>
+    </div>
+  </div>
+  <div class="coupon-banner">
+    <span style="font-size:20px">🎁</span>
+    <span><b>15 ₪ הנחה!</b> הזינו בעגלה את הקוד <span class="code" id="bannerCode">SAVE15</span></span>
+  </div>
+</header>
+
+<main>
+  <div class="section-title"><span class="ico">✨</span> אביזרים</div>
+  <div class="grid" id="grid-accessories"></div>
+
+  <div class="section-title"><span class="ico">🎈</span> בלוני מים</div>
+  <div class="grid" id="grid-balloons"></div>
+
+  <div class="section-title"><span class="ico">📿</span> בלוני חרוזים</div>
+  <div class="grid" id="grid-beads"></div>
+</main>
+
+<footer>בנוי באהבה 💗 — הזמנות נשלחות ב-SMS ישירות אלינו</footer>
+
+<!-- Floating cart bar -->
+<div class="cartbar hidden" id="cartbar">
+  <div class="cartbar-inner" id="openCart">
+    <span class="left"><span style="font-size:20px">🛒</span> <span class="count" id="cartCount">0</span> פריטים</span>
+    <span class="total" id="cartTotal">0 ₪</span>
+  </div>
+</div>
+
+<!-- Cart sheet -->
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet">
+    <div class="grab"></div>
+    <h2>🛒 העגלה שלי</h2>
+    <div id="cartItems"></div>
+
+    <div class="coupon-box" id="couponBox">
+      <label for="couponInput">קוד קופון</label>
+      <div class="coupon-row">
+        <input id="couponInput" type="text" placeholder="הזינו קוד קופון" autocomplete="off" />
+        <button id="applyCoupon">החל</button>
+      </div>
+      <div class="coupon-msg" id="couponMsg"></div>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <button class="send-btn" id="sendBtn">📲 שלח הזמנה ב-SMS</button>
+    <div class="send-alt" id="sendAlt"></div>
+    <p class="send-note">
+      לחיצה על הכפתור פותחת את אפליקציית ההודעות עם ההזמנה מוכנה. אם השליחה לשני המספרים יחד לא עובדת
+      במכשיר שלכם — השתמשו בקישורי הגיבוי לכל מספר בנפרד.
+    </p>
+    <button class="clear-btn" id="clearCart">רוקן עגלה</button>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIG ===================== */
+const CONFIG = {
+  // מספרי הטלפון שאליהם נשלחת ההזמנה (ניתן לעריכה)
+  phones: ["052733868", "0509728333"],
+  coupon: { code: "SAVE15", amount: 15 },   // קוד קופון וסכום ההנחה בש"ח
+  currency: "₪",
+  shopName: "החנות שלי",
+};
+
+/* ===================== PRODUCTS ===================== */
+const PRODUCTS = [
+  // אביזרים
+  { id: "skoshi-heart",   name: "סקושי ניקוי לב כחול",            price: 5, cat: "accessories", emoji: "💙" },
+  { id: "stitch-key",     name: "מחזיק מפתחות סטיץ'",             price: 4, cat: "accessories", emoji: "🔑" },
+  { id: "labubu",         name: "בובת לבובו",                     price: 5, cat: "accessories", emoji: "🧸" },
+  { id: "stitch-scooter", name: "מחזיק מפתחות סטיץ' קורקינט",     price: 4, cat: "accessories", emoji: "🛴" },
+  { id: "stitch-ship",    name: "מחזיק מפתחות סטיץ' על ספינה",    price: 4, cat: "accessories", emoji: "🚢" },
+  { id: "eyeshadow-brush",name: "מברשת לצללית",                  price: 5, cat: "accessories", emoji: "🖌️" },
+  { id: "white-clip",     name: "קליפס לבן",                      price: 5, cat: "accessories", emoji: "📎" },
+  { id: "markers",        name: "מרקרים",                         price: 5, cat: "accessories", emoji: "🖊️" },
+  { id: "mirror-key",     name: "מחזיק מפתחות של מראה",           price: 4, cat: "accessories", emoji: "🪞" },
+  { id: "nice-tape",      name: "סלוטייפ יפה",                    price: 4, cat: "accessories", emoji: "🎀" },
+
+  // בלוני מים (5 ₪ לכל סוג)
+  { id: "wb-red",    name: "בלוני מים — אדום",  price: 5, cat: "balloons", emoji: "🔴" },
+  { id: "wb-orange", name: "בלוני מים — כתום",  price: 5, cat: "balloons", emoji: "🟠" },
+  { id: "wb-yellow", name: "בלוני מים — צהוב",  price: 5, cat: "balloons", emoji: "🟡" },
+  { id: "wb-green",  name: "בלוני מים — ירוק",  price: 5, cat: "balloons", emoji: "🟢" },
+  { id: "wb-blue",   name: "בלוני מים — כחול",  price: 5, cat: "balloons", emoji: "🔵" },
+
+  // בלוני חרוזים (5 ₪ לכל סוג)
+  { id: "bead-pink",   name: "בלוני חרוזים — ורוד", price: 5, cat: "beads", emoji: "🌸" },
+  { id: "bead-orange", name: "בלוני חרוזים — כתום", price: 5, cat: "beads", emoji: "🧡" },
+];
+
+/* ===================== STATE ===================== */
+const STORE_KEY = "store_cart_v1";
+let cart = loadCart();          // { [id]: qty }
+let couponApplied = false;
+
+function loadCart() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveCart() { localStorage.setItem(STORE_KEY, JSON.stringify(cart)); }
+function productById(id) { return PRODUCTS.find(p => p.id === id); }
+const fmt = (n) => `${n} ${CONFIG.currency}`;
+
+/* ===================== RENDER CATALOG ===================== */
+function cardHTML(p) {
+  const qty = cart[p.id] || 0;
+  return `
+    <div class="card" data-id="${p.id}">
+      <div class="emoji">${p.emoji}</div>
+      <div class="name">${p.name}</div>
+      <div class="price">${fmt(p.price)}</div>
+      <div class="qty ${qty > 0 ? "has" : ""}">
+        <button class="add" data-add="${p.id}">הוסף לעגלה</button>
+        <div class="stepper ${qty > 0 ? "on" : ""}">
+          <button data-dec="${p.id}">−</button>
+          <span class="n" data-n="${p.id}">${qty}</span>
+          <button data-inc="${p.id}">＋</button>
+        </div>
+      </div>
+    </div>`;
+}
+function renderCatalog() {
+  const map = { accessories: "grid-accessories", balloons: "grid-balloons", beads: "grid-beads" };
+  Object.entries(map).forEach(([cat, elId]) => {
+    document.getElementById(elId).innerHTML =
+      PRODUCTS.filter(p => p.cat === cat).map(cardHTML).join("");
+  });
+}
+
+/* ===================== CART OPS ===================== */
+function setQty(id, qty) {
+  if (qty <= 0) delete cart[id];
+  else cart[id] = qty;
+  saveCart();
+  syncCardUI(id);
+  renderCartBar();
+  if (overlay.classList.contains("on")) renderCart();
+}
+function inc(id) { setQty(id, (cart[id] || 0) + 1); }
+function dec(id) { setQty(id, (cart[id] || 0) - 1); }
+
+function syncCardUI(id) {
+  const card = document.querySelector(`.card[data-id="${id}"]`);
+  if (!card) return;
+  const qty = cart[id] || 0;
+  const qtyWrap = card.querySelector(".qty");
+  const stepper = card.querySelector(".stepper");
+  const n = card.querySelector(`[data-n="${id}"]`);
+  qtyWrap.classList.toggle("has", qty > 0);
+  stepper.classList.toggle("on", qty > 0);
+  if (n) n.textContent = qty;
+}
+
+function totals() {
+  let count = 0, subtotal = 0;
+  for (const [id, qty] of Object.entries(cart)) {
+    const p = productById(id);
+    if (!p) continue;
+    count += qty;
+    subtotal += p.price * qty;
+  }
+  const discount = (couponApplied && subtotal > 0) ? Math.min(CONFIG.coupon.amount, subtotal) : 0;
+  const total = Math.max(0, subtotal - discount);
+  return { count, subtotal, discount, total };
+}
+
+/* ===================== CART BAR ===================== */
+const cartbar = document.getElementById("cartbar");
+function renderCartBar() {
+  const { count, total } = totals();
+  document.getElementById("cartCount").textContent = count;
+  document.getElementById("cartTotal").textContent = fmt(total);
+  cartbar.classList.toggle("hidden", count === 0);
+}
+
+/* ===================== CART SHEET ===================== */
+const overlay = document.getElementById("overlay");
+function renderCart() {
+  const items = Object.entries(cart);
+  const wrap = document.getElementById("cartItems");
+
+  if (items.length === 0) {
+    wrap.innerHTML = `<div class="cart-empty"><div class="big">🛒</div><p>העגלה ריקה — הוסיפו מוצרים כדי להזמין.</p></div>`;
+    document.getElementById("couponBox").style.display = "none";
+    document.getElementById("summary").innerHTML = "";
+    document.getElementById("sendBtn").disabled = true;
+    document.getElementById("sendAlt").innerHTML = "";
+    return;
+  }
+
+  document.getElementById("couponBox").style.display = "block";
+  document.getElementById("sendBtn").disabled = false;
+
+  wrap.innerHTML = items.map(([id, qty]) => {
+    const p = productById(id);
+    if (!p) return "";
+    return `
+      <div class="cart-item">
+        <span class="ci-emoji">${p.emoji}</span>
+        <div class="ci-info">
+          <div class="ci-name">${p.name}</div>
+          <div class="ci-price">${fmt(p.price)} ליחידה · סה"כ ${fmt(p.price * qty)}</div>
+        </div>
+        <div class="ci-stepper">
+          <button data-dec="${id}">−</button>
+          <span class="n">${qty}</span>
+          <button data-inc="${id}">＋</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  renderSummary();
+  renderSendLinks();
+}
+
+function renderSummary() {
+  const { subtotal, discount, total } = totals();
+  let html = `<div class="row"><span>סכום ביניים</span><span>${fmt(subtotal)}</span></div>`;
+  if (discount > 0) html += `<div class="row disc"><span>הנחת קופון (${CONFIG.coupon.code})</span><span>−${fmt(discount)}</span></div>`;
+  html += `<div class="row total"><span>לתשלום</span><span>${fmt(total)}</span></div>`;
+  document.getElementById("summary").innerHTML = html;
+}
+
+/* ===================== COUPON ===================== */
+function applyCoupon() {
+  const input = document.getElementById("couponInput");
+  const msg = document.getElementById("couponMsg");
+  const val = (input.value || "").trim().toUpperCase();
+  if (!val) { msg.className = "coupon-msg err"; msg.textContent = "נא להזין קוד קופון."; return; }
+  if (val === CONFIG.coupon.code.toUpperCase()) {
+    couponApplied = true;
+    msg.className = "coupon-msg ok";
+    msg.textContent = `הקופון הופעל! ${CONFIG.coupon.amount} ${CONFIG.currency} הנחה 🎉`;
+  } else {
+    couponApplied = false;
+    msg.className = "coupon-msg err";
+    msg.textContent = "קוד קופון לא תקין.";
+  }
+  renderSummary();
+  renderCartBar();
+  renderSendLinks();
+}
+
+/* ===================== ORDER MESSAGE / SMS ===================== */
+function buildMessage() {
+  const { subtotal, discount, total } = totals();
+  const lines = [`הזמנה חדשה מ-${CONFIG.shopName} 🛍️`, ""];
+  for (const [id, qty] of Object.entries(cart)) {
+    const p = productById(id);
+    if (!p) continue;
+    lines.push(`• ${qty}× ${p.name} — ${fmt(p.price * qty)}`);
+  }
+  lines.push("");
+  lines.push(`סכום ביניים: ${fmt(subtotal)}`);
+  if (discount > 0) lines.push(`הנחת קופון (${CONFIG.coupon.code}): −${fmt(discount)}`);
+  lines.push(`סה"כ לתשלום: ${fmt(total)}`);
+  return lines.join("\n");
+}
+
+// בונה קישור sms: עבור נמען/ים. iOS משתמש ב-&body, אנדרואיד ב-?body — נשתמש ב-?body שעובד ברובם.
+function smsLink(numbers, body) {
+  const to = Array.isArray(numbers) ? numbers.join(",") : numbers;
+  return `sms:${to}?&body=${encodeURIComponent(body)}`;
+}
+
+function renderSendLinks() {
+  const alt = document.getElementById("sendAlt");
+  const body = buildMessage();
+  const links = CONFIG.phones
+    .map(ph => `<a href="${smsLink(ph, body)}">${ph}</a>`)
+    .join(" · ");
+  alt.innerHTML = `קישורי גיבוי (מספר בודד): ${links}`;
+}
+
+function sendOrder() {
+  if (Object.keys(cart).length === 0) return;
+  const body = buildMessage();
+  window.location.href = smsLink(CONFIG.phones, body);
+}
+
+/* ===================== EVENTS ===================== */
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.dataset.add) inc(t.dataset.add);
+  else if (t.dataset.inc) inc(t.dataset.inc);
+  else if (t.dataset.dec) dec(t.dataset.dec);
+});
+
+document.getElementById("openCart").addEventListener("click", () => {
+  renderCart();
+  overlay.classList.add("on");
+  document.body.style.overflow = "hidden";
+});
+overlay.addEventListener("click", (e) => {
+  if (e.target === overlay) closeCart();
+});
+function closeCart() {
+  overlay.classList.remove("on");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("applyCoupon").addEventListener("click", applyCoupon);
+document.getElementById("couponInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") applyCoupon();
+});
+document.getElementById("sendBtn").addEventListener("click", sendOrder);
+document.getElementById("clearCart").addEventListener("click", () => {
+  cart = {}; couponApplied = false;
+  document.getElementById("couponInput").value = "";
+  document.getElementById("couponMsg").textContent = "";
+  saveCart();
+  renderCatalog();
+  renderCartBar();
+  renderCart();
+});
+
+document.getElementById("bannerCode").textContent = CONFIG.coupon.code;
+
+/* ===================== INIT ===================== */
+renderCatalog();
+renderCartBar();
+
+/* PWA service worker */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
