@@ -1,5 +1,5 @@
 // Store service worker — installable PWA + offline shell.
-const CACHE = "store-v2";
+const CACHE = "store-v3";
 const SHELL = [
   "./",
   "./index.html",
