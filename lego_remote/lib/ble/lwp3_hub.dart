@@ -47,7 +47,10 @@ class Lwp3Hub {
   }
 
   Future<void> connect() async {
-    await device.connect(timeout: const Duration(seconds: 10));
+    await device.connect(
+      license: License.nonprofit,
+      timeout: const Duration(seconds: 10),
+    );
     final services = await device.discoverServices();
     final service = services.firstWhere(
       (s) => s.uuid == serviceUuid,

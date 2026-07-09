@@ -37,7 +37,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Bluetooth Low Energy scanning/connect/read/write for talking to the LEGO hub.
-  flutter_blue_plus: ^1.32.12
+  flutter_blue_plus: ^2.3.10
   # Runtime Bluetooth/location permission requests on Android/iOS.
   permission_handler: ^11.3.1
 
