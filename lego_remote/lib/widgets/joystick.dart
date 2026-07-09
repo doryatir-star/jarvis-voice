@@ -50,7 +50,7 @@ class _JoystickState extends State<Joystick> {
         height: widget.size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.06),
+          color: Colors.white.withValues(alpha: 0.06),
           border: Border.all(color: Colors.white24, width: 2),
         ),
         child: Stack(
@@ -70,7 +70,7 @@ class _JoystickState extends State<Joystick> {
                       color: Theme.of(context)
                           .colorScheme
                           .primary
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                       blurRadius: 12,
                     ),
                   ],

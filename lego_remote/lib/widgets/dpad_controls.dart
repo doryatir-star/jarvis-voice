@@ -41,7 +41,7 @@ class DpadControls extends StatelessWidget {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: color ?? Colors.white.withOpacity(0.08),
+          color: color ?? Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white24),
         ),
@@ -66,7 +66,7 @@ class DpadControls extends StatelessWidget {
               context,
               Icons.stop_rounded,
               DpadDirection.stop,
-              color: Colors.red.withOpacity(0.3),
+              color: Colors.red.withValues(alpha: 0.3),
             ),
             const SizedBox(width: 8),
             _button(context, Icons.keyboard_arrow_right, DpadDirection.right),

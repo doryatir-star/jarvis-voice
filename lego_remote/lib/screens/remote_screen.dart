@@ -117,7 +117,7 @@ class _RemoteScreenState extends State<RemoteScreen> with WidgetsBindingObserver
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.withOpacity(0.25),
+                    backgroundColor: Colors.red.withValues(alpha: 0.25),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   icon: const Icon(Icons.stop_circle, color: Colors.white),
