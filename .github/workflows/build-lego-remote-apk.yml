@@ -1,4 +1,4 @@
-name: Build LEGO Remote APK
+name: Build LEGO Remote apps
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,4 +32,37 @@ jobs:
         with:
           name: lego-remote-debug-apk
           path: lego_remote/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
+
+  # Unsigned iOS build. This cannot be installed by tapping it directly —
+  # iOS requires every app to be signed. Since there's no Apple Developer
+  # account configured here, sign this .ipa yourself with a free tool like
+  # Sideloadly (https://sideloadly.io) and your own Apple ID, then install
+  # it over USB. No Mac or paid developer account needed for that step.
+  ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: lego_remote
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned .ipa
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r lego-remote-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lego-remote-unsigned-ipa
+          path: lego_remote/lego-remote-unsigned.ipa
           retention-days: 30
