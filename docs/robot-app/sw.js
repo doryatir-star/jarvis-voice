@@ -1,14 +1,15 @@
-// Jarvis service worker — enables installability + offline shell.
-const CACHE = "jarvis-v4-1";
+// Robot Control service worker — enables installability + offline shell.
+const CACHE = "robotapp-v1";
 const SHELL = [
   "./",
   "./index.html",
+  "./ble.js",
   "./manifest.webmanifest",
-  "./icon-192.png",
-  "./icon-512.png",
-  "./icon-maskable-512.png",
-  "./apple-touch-icon.png",
-  "./favicon-32.png"
+  "../icon-192.png",
+  "../icon-512.png",
+  "../icon-maskable-512.png",
+  "../apple-touch-icon.png",
+  "../favicon-32.png",
 ];
 
 self.addEventListener("install", (e) => {
@@ -27,7 +28,6 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  // Only cache same-origin GETs (don't touch CDNs / APIs).
   if (url.origin !== self.location.origin) return;
   e.respondWith(
     caches.match(req).then((hit) => {

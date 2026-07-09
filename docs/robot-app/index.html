@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>LEGO Robot Control</title>
+
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#020611" />
+<meta name="description" content="Scan, connect, and control your LEGO Bluetooth robot." />
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="icon" href="../icon-192.png" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="application-name" content="Robot Control" />
+
+<style>
+  :root {
+    --amber: #ffb92e;
+    --amber-dim: #8a5f10;
+    --bg: #020611;
+    --text: #f2e6d0;
+    --dim: #8a7e68;
+    --panel: rgba(20, 14, 4, .55);
+    --line: rgba(255, 185, 46, .25);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: radial-gradient(ellipse at 50% 30%, #241705 0%, var(--bg) 70%);
+    color: var(--text);
+    font-family: "Segoe UI", "SF Pro Display", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 20px 16px 40px;
+    gap: 14px;
+  }
+  h1 {
+    margin: 0; letter-spacing: 0.15em;
+    font-size: clamp(18px, 3vw, 26px);
+    color: var(--amber);
+    text-shadow: 0 0 14px rgba(255,185,46,.5);
+    font-weight: 600;
+    text-align: center;
+  }
+  .sub { color: var(--dim); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; }
+
+  #status { font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--amber); text-align: center; }
+  #status.warn { color: #ff8a5c; }
+  #status.ok { color: #7dffb0; }
+
+  .panel {
+    width: min(94vw, 460px);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    backdrop-filter: blur(6px);
+    font-size: 13px;
+  }
+  .panel .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; color: var(--dim); }
+  .panel .row b { color: var(--text); font-weight: 500; }
+  .portlist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .portchip {
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-size: 11px;
+    color: var(--dim);
+  }
+  .portchip.motor { color: var(--amber); border-color: var(--amber); }
+  .portchip.light { color: #7dd8ff; border-color: #7dd8ff; }
+
+  select {
+    background: rgba(10,7,2,.9); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 8px; font-size: 13px;
+  }
+
+  button {
+    background: rgba(255,185,46,.08);
+    color: var(--amber);
+    border: 1px solid rgba(255,185,46,.45);
+    padding: 10px 18px;
+    border-radius: 99px;
+    letter-spacing: 0.1em;
+    font-size: 12px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  button:hover { background: rgba(255,185,46,.2); box-shadow: 0 0 20px rgba(255,185,46,.3); }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button.stop { color: #ff8a5c; border-color: rgba(255,138,92,.6); }
+  button.stop:hover { background: rgba(255,138,92,.18); box-shadow: 0 0 20px rgba(255,138,92,.3); }
+  .btnrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; width: min(94vw, 460px); }
+  .tabs button {
+    flex: 1; padding: 8px 6px; font-size: 11px; border-radius: 8px;
+    background: rgba(255,185,46,.05);
+  }
+  .tabs button.active { background: rgba(255,185,46,.25); box-shadow: 0 0 16px rgba(255,185,46,.3); }
+  .tabpanel { display: none; width: min(94vw, 460px); }
+  .tabpanel.active { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  /* D-pad */
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 84px);
+    grid-template-rows: repeat(2, 64px);
+    gap: 10px;
+    justify-content: center;
+  }
+  .dpad button { width: 100%; height: 100%; font-size: 20px; padding: 0; touch-action: none; user-select: none; }
+  .dpad button.active { background: rgba(255,185,46,.35); box-shadow: 0 0 26px rgba(255,185,46,.5); }
+  .dpad .fwd { grid-column: 2; grid-row: 1; }
+  .dpad .left { grid-column: 1; grid-row: 2; }
+  .dpad .stopcell { grid-column: 2; grid-row: 2; }
+  .dpad .right { grid-column: 3; grid-row: 2; }
+
+  .speedrow { display: flex; align-items: center; gap: 10px; width: min(94vw, 460px); color: var(--dim); font-size: 12px; }
+  .speedrow input[type="range"] { flex: 1; accent-color: var(--amber); }
+
+  /* Motor test tab */
+  .motorcard {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .motorcard .hdr { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); }
+  .motorcard input[type="range"] { width: 100%; accent-color: var(--amber); }
+
+  /* Light tab */
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); cursor: pointer; }
+
+  /* Sensors tab */
+  .sensorrow { width: 100%; display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 6px 0; font-size: 13px; }
+
+  #log {
+    width: min(94vw, 460px); max-height: 18vh; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; font-size: 12px; line-height: 1.5;
+  }
+  #log .j { color: #7dffb0; }
+  #log .e { color: #ff7a7a; }
+  #log p { margin: 3px 0; }
+
+  .hint { color: var(--dim); font-size: 12px; text-align: center; max-width: 440px; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <h1>🧱 LEGO ROBOT CONTROL</h1>
+  <div class="sub">web bluetooth &middot; lwp3</div>
+
+  <div id="status">checking bluetooth support&hellip;</div>
+
+  <div class="btnrow">
+    <button id="scanBtn">🔍 scan for robots</button>
+    <button id="reconnectBtn" style="display:none;">⚡ quick reconnect</button>
+    <button id="disconnectBtn" disabled>disconnect</button>
+  </div>
+
+  <div class="panel" id="infoPanel" style="display:none;">
+    <div class="row"><span>Hub</span><b id="hubName">—</b></div>
+    <div class="row"><span>Battery</span><b id="hubBattery">—</b></div>
+    <div class="row"><span>Ports</span></div>
+    <div class="portlist" id="portList"></div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button data-tab="drive" class="active">Drive</button>
+    <button data-tab="motors">Motors</button>
+    <button data-tab="light">Light</button>
+    <button data-tab="sensors">Sensors</button>
+  </div>
+
+  <!-- DRIVE -->
+  <div class="tabpanel active" data-tab="drive">
+    <div class="panel">
+      <div class="row"><span>Left motor port</span><select id="leftSelect"></select></div>
+      <div class="row"><span>Right motor port</span><select id="rightSelect"></select></div>
+    </div>
+    <div class="dpad">
+      <button class="fwd" data-l="1" data-r="1">&#9650;</button>
+      <button class="left" data-l="-1" data-r="1">&#9664;</button>
+      <button class="stop stopcell" id="stopBtn">STOP</button>
+      <button class="right" data-l="1" data-r="-1">&#9654;</button>
+      <button class="left" style="grid-column:1; grid-row:1;" data-l="-1" data-r="-1">&#9664;&#9660;</button>
+      <button class="right" style="grid-column:3; grid-row:1;" data-l="-1" data-r="-1">&#9660;&#9654;</button>
+    </div>
+    <div class="speedrow">
+      <span>speed</span>
+      <input id="speed" type="range" min="20" max="100" value="60" step="5" />
+      <span id="speedVal">60%</span>
+    </div>
+    <div class="hint">Press and hold a direction to drive; release to stop.</div>
+  </div>
+
+  <!-- MOTORS (per-port manual test) -->
+  <div class="tabpanel" data-tab="motors">
+    <div id="motorCards" class="hint">Connect to a hub to see its ports here.</div>
+  </div>
+
+  <!-- LIGHT -->
+  <div class="tabpanel" data-tab="light">
+    <div class="panel">
+      <div class="row"><span>Light port</span><select id="lightSelect"></select></div>
+    </div>
+    <div class="swatches" id="swatches"></div>
+    <div class="hint">Only hubs with a built-in RGB status light support this. If your hub has none, this tab won't do anything.</div>
+  </div>
+
+  <!-- SENSORS -->
+  <div class="tabpanel" data-tab="sensors">
+    <div class="panel" id="sensorPanel">
+      <div class="hint">Connect to a hub, then tap a non-motor port to start reading its values.</div>
+    </div>
+  </div>
+
+  <div class="btnrow" id="voicerow">
+    <button id="mic">mic on</button>
+    <button id="start">start always-listen</button>
+  </div>
+
+  <div class="btnrow" style="width:min(94vw,460px);">
+    <input id="typed" type="text" placeholder='Type: "forward", "turn left", "red light", "stop"...' autocomplete="off"
+      style="flex:1; background:rgba(10,7,2,.85); color:var(--text); border:1px solid var(--line); border-radius:99px; padding:10px 16px; font-size:14px; outline:none;" />
+    <button id="send">send</button>
+  </div>
+
+  <div id="log"></div>
+  <div class="hint">
+    "Scan" opens the browser's device picker with every nearby LEGO hub — pick yours and it connects.
+    "Quick reconnect" skips the picker for hubs you've already connected once (Chrome/Edge only).
+    Voice commands: <b>forward</b>, <b>back</b>, <b>left</b>, <b>right</b>, <b>stop</b>, <b>faster</b>, <b>slower</b>,
+    <b>red/green/blue/white/off light</b> — say "Jarvis, ..." first.
+    <br/>Web Bluetooth isn't supported on iOS Safari; use desktop Chrome/Edge or Android Chrome.
+  </div>
+</div>
+
+<script src="ble.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const log = $("log");
+  const status = $("status");
+  const scanBtn = $("scanBtn");
+  const reconnectBtn = $("reconnectBtn");
+  const disconnectBtn = $("disconnectBtn");
+  const infoPanel = $("infoPanel");
+  const hubName = $("hubName");
+  const hubBattery = $("hubBattery");
+  const portList = $("portList");
+  const leftSelect = $("leftSelect");
+  const rightSelect = $("rightSelect");
+  const lightSelect = $("lightSelect");
+  const speed = $("speed");
+  const speedVal = $("speedVal");
+  const motorCards = $("motorCards");
+  const sensorPanel = $("sensorPanel");
+
+  const add = (cls, text) => {
+    const p = document.createElement("p");
+    p.className = cls;
+    p.textContent = text;
+    log.appendChild(p);
+    log.scrollTop = log.scrollHeight;
+  };
+  const setStatus = (text, kind) => {
+    status.textContent = text;
+    status.classList.toggle("warn", kind === "warn");
+    status.classList.toggle("ok", kind === "ok");
+  };
+  window.addEventListener("error", (e) => add("e", "JS error: " + (e.message || e.error || e)));
+
+  const RB = window.RobotBLE;
+  let connected = false;
+  let lastPorts = [];
+
+  if (!RB.isSupported) {
+    setStatus("Web Bluetooth not supported in this browser", "warn");
+    scanBtn.disabled = true;
+    add("e", "This browser has no Web Bluetooth support. Use desktop Chrome/Edge or Android Chrome (not iOS Safari).");
+  } else {
+    setStatus("not connected");
+    if (RB.canQuickReconnect) reconnectBtn.style.display = "";
+  }
+
+  // ---------- TABS ----------
+  document.querySelectorAll("#tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#tabs button").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tabpanel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelector(`.tabpanel[data-tab="${btn.dataset.tab}"]`).classList.add("active");
+    });
+  });
+
+  // ---------- CONNECTION STATUS ----------
+  RB.on("status", (s) => {
+    connected = s.connected;
+    scanBtn.disabled = connected;
+    reconnectBtn.disabled = connected;
+    disconnectBtn.disabled = !connected;
+    infoPanel.style.display = connected ? "block" : "none";
+    if (!connected) {
+      setStatus("not connected");
+      hubBattery.textContent = "—";
+      motorCards.innerHTML = '<div class="hint">Connect to a hub to see its ports here.</div>';
+      sensorPanel.innerHTML = '<div class="hint">Connect to a hub, then tap a non-motor port to start reading its values.</div>';
+      return;
+    }
+    setStatus("connected", "ok");
+    hubName.textContent = s.name || "LEGO Hub";
+    lastPorts = s.ports;
+
+    portList.innerHTML = "";
+    s.ports.forEach((p) => {
+      const chip = document.createElement("span");
+      chip.className = "portchip" + (p.isMotor ? " motor" : "") + (p.isLight ? " light" : "");
+      chip.textContent = `${p.label} (0x${p.typeId.toString(16)})`;
+      portList.appendChild(chip);
+    });
+    if (!s.ports.length) portList.innerHTML = '<span class="portchip">no ports attached yet</span>';
+
+    const fillSelect = (sel, current, filterFn) => {
+      const prev = sel.value;
+      sel.innerHTML = "";
+      s.ports.filter(filterFn || (() => true)).forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.portId;
+        opt.textContent = `${p.label}${p.isMotor ? " (motor)" : p.isLight ? " (light)" : ""}`;
+        sel.appendChild(opt);
+      });
+      const want = current !== null && current !== undefined ? String(current) : prev;
+      if ([...sel.options].some((o) => o.value === want)) sel.value = want;
+    };
+    fillSelect(leftSelect, s.leftPort);
+    fillSelect(rightSelect, s.rightPort);
+    fillSelect(lightSelect, s.lightPort);
+
+    renderMotorCards(s.ports);
+    renderSensorRows(s.ports);
+  });
+  RB.on("battery", (pct) => { hubBattery.textContent = pct + "%"; });
+  RB.on("portValue", ({ portId, label, value }) => {
+    const row = sensorPanel.querySelector(`[data-port="${portId}"] .val`);
+    if (row) row.textContent = value;
+  });
+
+  leftSelect.addEventListener("change", () => RB.setLeftPort(Number(leftSelect.value)));
+  rightSelect.addEventListener("change", () => RB.setRightPort(Number(rightSelect.value)));
+  lightSelect.addEventListener("change", () => RB.setLightPort(Number(lightSelect.value)));
+
+  // ---------- CONNECT BUTTONS ----------
+  scanBtn.addEventListener("click", async () => {
+    try {
+      setStatus("scanning…");
+      await RB.scan();
+      add("j", "Connected to hub.");
+    } catch (e) {
+      setStatus("not connected", "warn");
+      add("e", "Scan/connect failed: " + (e.message || e));
+    }
+  });
+  reconnectBtn.addEventListener("click", async () => {
+    try {
+      setStatus("reconnecting…");
+      await RB.reconnectLast();
+      add("j", "Reconnected to last hub.");
+    } catch (e) {
+      setStatus("not connected", "warn");
+      add("e", "Quick reconnect failed: " + (e.message || e));
+    }
+  });
+  disconnectBtn.addEventListener("click", async () => {
+    await RB.disconnect();
+    add("j", "Disconnected.");
+  });
+
+  // ---------- DRIVE TAB ----------
+  speed.addEventListener("input", () => { speedVal.textContent = speed.value + "%"; });
+  const curSpeed = () => Number(speed.value);
+
+  document.querySelectorAll(".dpad button[data-l]").forEach((btn) => {
+    const l = Number(btn.dataset.l), r = Number(btn.dataset.r);
+    const startDrive = (e) => {
+      e.preventDefault();
+      if (!connected) return;
+      btn.classList.add("active");
+      RB.driveMotors(l * curSpeed(), r * curSpeed());
+    };
+    const stopDrive = (e) => {
+      e.preventDefault();
+      btn.classList.remove("active");
+      if (connected) RB.stop();
+    };
+    ["pointerdown", "touchstart", "mousedown"].forEach((ev) => btn.addEventListener(ev, startDrive, { passive: false }));
+    ["pointerup", "pointerleave", "pointercancel", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach((ev) =>
+      btn.addEventListener(ev, stopDrive, { passive: false })
+    );
+  });
+  $("stopBtn").addEventListener("click", () => connected && RB.stop());
+
+  // ---------- MOTORS TAB (per-port manual test) ----------
+  function renderMotorCards(ports) {
+    const motors = ports.filter((p) => p.isMotor);
+    if (!motors.length) { motorCards.innerHTML = '<div class="hint">No motors detected yet.</div>'; return; }
+    motorCards.innerHTML = "";
+    motors.forEach((p) => {
+      const card = document.createElement("div");
+      card.className = "motorcard";
+      card.innerHTML = `
+        <div class="hdr"><span>Port ${p.label}</span><span class="val">0%</span></div>
+        <input type="range" min="-100" max="100" value="0" step="5" />
+      `;
+      const range = card.querySelector("input");
+      const val = card.querySelector(".val");
+      range.addEventListener("input", () => {
+        val.textContent = range.value + "%";
+        RB.setMotorPower(p.portId, Number(range.value));
+      });
+      range.addEventListener("pointerup", () => { range.value = 0; val.textContent = "0%"; RB.setMotorPower(p.portId, 0); });
+      motorCards.appendChild(card);
+    });
+  }
+
+  // ---------- LIGHT TAB ----------
+  const COLORS = [
+    ["#ff3b30", 255, 59, 48], ["#ff9500", 255, 149, 0], ["#ffcc00", 255, 204, 0],
+    ["#34c759", 52, 199, 89], ["#00c7be", 0, 199, 190], ["#007aff", 0, 122, 255],
+    ["#5856d6", 88, 86, 214], ["#ff2d55", 255, 45, 85], ["#ffffff", 255, 255, 255],
+    ["#000000", 0, 0, 0],
+  ];
+  const swatches = $("swatches");
+  COLORS.forEach(([hex, r, g, b]) => {
+    const el = document.createElement("div");
+    el.className = "swatch";
+    el.style.background = hex;
+    el.addEventListener("click", () => connected && RB.setHubLight(r, g, b));
+    swatches.appendChild(el);
+  });
+
+  // ---------- SENSORS TAB ----------
+  function renderSensorRows(ports) {
+    const nonMotors = ports.filter((p) => !p.isMotor);
+    if (!nonMotors.length) { sensorPanel.innerHTML = '<div class="hint">No sensors detected yet.</div>'; return; }
+    sensorPanel.innerHTML = "";
+    nonMotors.forEach((p) => {
+      const row = document.createElement("div");
+      row.className = "sensorrow";
+      row.dataset.port = p.portId;
+      row.innerHTML = `<span>Port ${p.label} (0x${p.typeId.toString(16)})</span><span class="val">tap to read</span>`;
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => { RB.enablePortNotifications(p.portId, 0); row.querySelector(".val").textContent = "…"; });
+      sensorPanel.appendChild(row);
+    });
+  }
+
+  // ---------- VOICE (wake-word + dispatch, same pattern as JARVIS) ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const hasVoice = !!SR;
+  const micBtn = $("mic");
+  const startBtn = $("start");
+  if (!hasVoice) $("voicerow").style.display = "none";
+  const recog = hasVoice ? new SR() : null;
+  if (recog) { recog.continuous = true; recog.interimResults = true; recog.lang = "en-US"; }
+
+  let running = false, voiceEnabled = true;
+  const WAKE = ["hey jarvis", "ok jarvis", "okay jarvis", "jarvis", "jervis", "jarvi"];
+  function stripWake(text) {
+    const t = text.trim().toLowerCase().replace(/^[,.\s]+/, "");
+    for (const w of WAKE.sort((a, b) => b.length - a.length)) {
+      if (t === w) return { cmd: "", matched: true };
+      if (t.startsWith(w + " ") || t.startsWith(w + ",") || t.startsWith(w + ".")) {
+        return { cmd: t.slice(w.length).replace(/^[\s,.?!]+/, ""), matched: true };
+      }
+    }
+    return { cmd: text, matched: false };
+  }
+
+  const synth = window.speechSynthesis;
+  function say(text) {
+    if (!text) return;
+    try { const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; u.pitch = 0.95; synth.cancel(); synth.speak(u); } catch (e) {}
+  }
+
+  const LIGHT_WORDS = { red: [255,0,0], green: [0,255,0], blue: [0,0,255], white: [255,255,255], yellow: [255,204,0], off: [0,0,0] };
+
+  function handleVoiceCommand(cmd) {
+    cmd = cmd.trim().toLowerCase();
+    if (!connected) { say("Robot isn't connected."); return; }
+    const s = curSpeed();
+    if (/^(forward|go|drive|ahead)\b/.test(cmd)) { RB.driveMotors(s, s); return say("Forward."); }
+    if (/^(back|backward|reverse)\b/.test(cmd)) { RB.driveMotors(-s, -s); return say("Reversing."); }
+    if (/^(left|turn left)\b/.test(cmd)) { RB.driveMotors(-s, s); return say("Turning left."); }
+    if (/^(right|turn right)\b/.test(cmd)) { RB.driveMotors(s, -s); return say("Turning right."); }
+    if (/^stop\b/.test(cmd)) { RB.stop(); return say("Stopped."); }
+    if (/^faster\b/.test(cmd)) { speed.value = Math.min(100, s + 15); speed.dispatchEvent(new Event("input")); return say("Speed " + curSpeed() + " percent."); }
+    if (/^(slower|slow down)\b/.test(cmd)) { speed.value = Math.max(20, s - 15); speed.dispatchEvent(new Event("input")); return say("Speed " + curSpeed() + " percent."); }
+    const lightMatch = Object.keys(LIGHT_WORDS).find((w) => cmd.includes(w) && cmd.includes("light"));
+    if (lightMatch) { const [r,g,b] = LIGHT_WORDS[lightMatch]; RB.setHubLight(r,g,b); return say(lightMatch === "off" ? "Light off." : lightMatch + " light."); }
+    say("I don't know that robot command.");
+  }
+
+  if (recog) {
+    let lastFinal = "";
+    recog.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (!res.isFinal) continue;
+        const text = res[0].transcript.trim();
+        if (!text || text === lastFinal) continue;
+        lastFinal = text;
+        const { cmd, matched } = stripWake(text);
+        if (!matched) continue;
+        add("j", "heard: " + text);
+        if (cmd) handleVoiceCommand(cmd);
+      }
+    };
+    recog.onerror = (e) => { if (e.error !== "no-speech" && e.error !== "aborted") add("e", "recognition: " + e.error); };
+    recog.onend = () => { if (running && voiceEnabled) { try { recog.start(); } catch (e) {} } };
+
+    micBtn.addEventListener("click", () => {
+      voiceEnabled = !voiceEnabled;
+      micBtn.textContent = voiceEnabled ? "mic on" : "mic off";
+      if (!voiceEnabled) { try { recog.stop(); } catch (e) {} }
+      else if (running) { try { recog.start(); } catch (e) {} }
+    });
+    startBtn.addEventListener("click", () => {
+      if (running) return;
+      running = true;
+      startBtn.style.display = "none";
+      try { recog.start(); } catch (e) {}
+      add("j", "Listening. Say 'Jarvis, forward' etc.");
+    });
+  }
+
+  const typed = $("typed");
+  $("send").addEventListener("click", submitTyped);
+  typed.addEventListener("keydown", (e) => { if (e.key === "Enter") submitTyped(); });
+  function submitTyped() {
+    const v = typed.value.trim();
+    if (!v) return;
+    typed.value = "";
+    add("j", v);
+    const { cmd, matched } = stripWake(v);
+    handleVoiceCommand(matched ? (cmd || v) : v);
+  }
+})();
+</script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
+</script>
+</body>
+</html>
