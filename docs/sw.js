@@ -1,8 +1,10 @@
 // Jarvis service worker — enables installability + offline shell.
-const CACHE = "jarvis-v4-1";
+const CACHE = "jarvis-v5";
 const SHELL = [
   "./",
   "./index.html",
+  "./robot.html",
+  "./robot-ble.js",
   "./manifest.webmanifest",
   "./icon-192.png",
   "./icon-512.png",
