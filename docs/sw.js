@@ -1,5 +1,8 @@
 // Jarvis service worker — enables installability + offline shell.
-const CACHE = "jarvis-v4-1";
+// NETWORK-FIRST: always try the network so updates reach users immediately;
+// fall back to the cache only when offline. (The previous cache-first
+// version could keep serving a stale copy of the app after updates.)
+const CACHE = "jarvis-v5-1";
 const SHELL = [
   "./",
   "./index.html",
@@ -27,16 +30,16 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  // Only cache same-origin GETs (don't touch CDNs / APIs).
+  // Only handle same-origin GETs (don't touch CDNs / APIs).
   if (url.origin !== self.location.origin) return;
+  // Network-first: fetch fresh, cache a copy, fall back to cache when offline.
   e.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) return hit;
-      return fetch(req).then((res) => {
+    fetch(req)
+      .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match("./index.html"));
-    })
+      })
+      .catch(() => caches.match(req).then((hit) => hit || caches.match("./index.html")))
   );
 });
