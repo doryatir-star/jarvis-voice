@@ -15,6 +15,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="connect">Connect</button>
     <button class="tab-btn" data-tab="controller">Controller</button>
+    <button class="tab-btn" data-tab="voice">Voice</button>
     <button class="tab-btn" data-tab="console">Console</button>
     <button class="tab-btn" data-tab="settings">Settings</button>
   </nav>
@@ -62,6 +63,18 @@
       <p class="hint">Watch which motor moves, then set Claw/Head port in Settings.</p>
     </section>
 
+    <section id="tab-voice" class="tab-panel">
+      <p class="hint">
+        Say <strong>“Hey Jarvis”</strong> then a command — e.g. “Hey Jarvis,
+        move forward”, “Hey Jarvis, turn left”, “Hey Jarvis, open the claw”,
+        “Hey Jarvis, stop”. Connect to the hub first (Connect tab).
+      </p>
+      <button id="voiceBtn" class="brick blue wide">🎤 Start listening</button>
+      <button id="voiceToggleBtn" class="brick gray" hidden>Pause mic</button>
+      <p id="voiceStatus" class="status disconnected">Voice off</p>
+      <div id="voiceLog" class="log" aria-live="polite"></div>
+    </section>
+
     <section id="tab-console" class="tab-panel">
       <div id="log" class="log" aria-live="polite"></div>
       <form id="consoleForm" class="console-input">
@@ -99,6 +112,7 @@
 
   <script src="lwp3.js"></script>
   <script src="rover-hub.js"></script>
+  <script src="voice.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

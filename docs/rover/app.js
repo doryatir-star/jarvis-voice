@@ -9,6 +9,18 @@ function runConsoleCommand(raw, hub) {
   if (!text) return;
   const parts = text.split(/\s+/);
 
+  // scan / raw are console-only escape hatches; handle them explicitly.
+  // Everything else goes through the same natural-language matcher the voice
+  // assistant uses, so typed phrases like "go forward" or "grab it" work too.
+  if (parts[0] !== 'scan' && parts[0] !== 'raw') {
+    const intent = typeof matchRoverIntent === 'function' ? matchRoverIntent(text) : null;
+    if (intent) {
+      if (intent.arg === undefined) hub[intent.method]();
+      else hub[intent.method](intent.arg);
+      return;
+    }
+  }
+
   switch (parts[0]) {
     case 'forward':
     case 'fwd':
@@ -120,6 +132,52 @@ document.addEventListener('DOMContentLoaded', () => {
     runConsoleCommand(consoleInput.value, hub);
     consoleInput.value = '';
   });
+
+  // --- Voice tab ---
+  const voiceBtn = document.getElementById('voiceBtn');
+  const voiceToggleBtn = document.getElementById('voiceToggleBtn');
+  const voiceStatusEl = document.getElementById('voiceStatus');
+  const voiceLogEl = document.getElementById('voiceLog');
+
+  const voiceLog = (line) => {
+    const div = document.createElement('div');
+    div.textContent = line;
+    voiceLogEl.appendChild(div);
+    while (voiceLogEl.childElementCount > 200) voiceLogEl.removeChild(voiceLogEl.firstChild);
+    voiceLogEl.scrollTop = voiceLogEl.scrollHeight;
+  };
+
+  const voice = new VoiceAssistant({
+    hub,
+    onLog: voiceLog,
+    onState: (state) => {
+      const labels = {
+        idle: 'Voice off',
+        listening: 'Listening — say “Hey Jarvis”',
+        paused: 'Mic paused',
+        blocked: 'Microphone blocked',
+        unsupported: 'Voice not supported in this browser',
+      };
+      voiceStatusEl.textContent = labels[state] || state;
+      // Reuse the .status color classes (connected=green listening, etc.)
+      const cls = state === 'listening' ? 'connected'
+        : state === 'blocked' || state === 'unsupported' ? 'disconnected'
+        : state === 'paused' ? 'connecting' : 'disconnected';
+      voiceStatusEl.className = 'status ' + cls;
+      voiceBtn.classList.toggle('listening', state === 'listening');
+      voiceToggleBtn.hidden = !(state === 'listening' || state === 'paused');
+      voiceToggleBtn.textContent = state === 'paused' ? 'Resume mic' : 'Pause mic';
+    },
+  });
+
+  if (!voice.isSupported) {
+    voiceStatusEl.textContent = 'Voice not supported in this browser';
+    voiceStatusEl.className = 'status disconnected';
+    voiceLog("Voice isn't available here. On iPhone, Apple blocks speech recognition in Bluefy — use the Controller buttons instead.");
+  }
+
+  voiceBtn.addEventListener('click', () => voice.start());
+  voiceToggleBtn.addEventListener('click', () => voice.toggle());
 
   // --- Settings tab ---
   const clawPortSel = document.getElementById('clawPortSel');

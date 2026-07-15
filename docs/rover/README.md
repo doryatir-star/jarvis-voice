@@ -43,6 +43,15 @@ folder: `/docs`), or ask for help getting it enabled.
 3. **Controller tab**: forward/backward/left/right/stop, head left/center/
    right, claw open/close, and "Nudge Port C/D" to help identify which
    external port drives the claw vs. the head.
+3b. **Voice tab**: tap "Start listening", then say **"Hey Jarvis"** followed
+   by a command — "Hey Jarvis, move forward", "turn left", "look right",
+   "open the claw", "grab it", "stop", etc. It listens continuously and
+   speaks confirmations back. Tap "Pause mic" to mute it.
+   **Big caveat:** Apple blocks speech recognition in third-party iOS
+   browsers, so this may simply not work in Bluefy — if the tab says "Voice
+   not supported in this browser", that's expected, and you fall back to the
+   Controller buttons. (The spoken *replies* may still work even if
+   listening doesn't.) It works reliably in desktop Chrome/Edge.
 4. **Console tab**: a live log of every byte sent/received, plus a text
    box for typed commands: `forward`, `backward`, `left`, `right`, `stop`,
    `head left` / `head right` / `head center`, `claw open` / `claw close`,
