@@ -489,6 +489,7 @@ class JarvisWindow(QtWidgets.QWidget):
         self.ram_panel = InfoPanel("MEMORY"); left.addWidget(self.ram_panel)
         self.battery_panel = InfoPanel("POWER"); left.addWidget(self.battery_panel)
         self.net_panel = InfoPanel("NETWORK"); left.addWidget(self.net_panel)
+        self.rover_panel = InfoPanel("ROVER"); left.addWidget(self.rover_panel)
         left.addStretch(1)
         left_w = QtWidgets.QWidget(); left_w.setLayout(left); left_w.setFixedWidth(220)
         root.addWidget(left_w)

@@ -56,6 +56,19 @@ SYSTEM_MAP = {
     "battery": ["battery", "battery level", "how much battery", "battery status"],
 }
 
+ROBOT_MAP = {
+    ("robot_forward", ""): ["move forward", "drive forward", "roll forward", "advance", "move ahead"],
+    ("robot_backward", ""): ["move backward", "drive backward", "back up", "reverse", "move back"],
+    ("robot_turn", "left"): ["turn left", "steer left", "turn to the left"],
+    ("robot_turn", "right"): ["turn right", "steer right", "turn to the right"],
+    ("robot_stop", ""): ["stop the rover", "stop the robot", "halt", "freeze", "stop moving"],
+    ("robot_head", "left"): ["turn your head left", "look left", "rotate your head left"],
+    ("robot_head", "right"): ["turn your head right", "look right", "rotate your head right"],
+    ("robot_head", "center"): ["look straight", "look forward", "center your head"],
+    ("robot_claw", "open"): ["open the claw", "open your claw", "release the claw", "let go"],
+    ("robot_claw", "close"): ["close the claw", "close your claw", "grab it", "grip"],
+}
+
 OPEN_VERBS = ("open", "launch", "start", "run", "bring up", "pull up", "show me")
 SEARCH_VERBS = ("search for", "search", "google", "look up", "find")
 PLAY_VERBS = ("play", "watch", "put on", "queue up")
@@ -83,6 +96,14 @@ def _match_system(t: str):
             if re.search(rf"\b{re.escape(p)}\b", t):
                 return action
     return None
+
+
+def _match_robot(t: str):
+    for (action, value), phrases in ROBOT_MAP.items():
+        for p in phrases:
+            if re.search(rf"\b{re.escape(p)}\b", t):
+                return action, value
+    return None, None
 
 
 def _known_target(t: str):
@@ -326,6 +347,12 @@ class Brain:
         for phrase, w in WINDOW_PHRASES.items():
             if re.search(rf"\b{re.escape(phrase)}\b", t):
                 return {"action": "window", "value": w, "speak": ""}
+
+        # Robot commands (checked before "kill process" so phrases like
+        # "close the claw" aren't mistaken for killing a process named "claw")
+        robot_action, robot_value = _match_robot(t)
+        if robot_action:
+            return {"action": robot_action, "value": robot_value, "speak": ""}
 
         # Kill process
         m = re.match(r"(?:kill|close|quit|terminate|end) (?:process )?(\w[\w ]*?)(?: process)?$", t)

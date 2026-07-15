@@ -43,8 +43,16 @@ echo [build] Running PyInstaller (takes a minute) ...
   --collect-all pyaudio ^
   --collect-all pyttsx3 ^
   --collect-all comtypes ^
+  --collect-all bleak ^
+  --collect-all pylgbst ^
+  --collect-all winrt ^
   --hidden-import pyttsx3.drivers ^
   --hidden-import pyttsx3.drivers.sapi5 ^
+  --hidden-import winrt.windows.foundation.collections ^
+  --hidden-import winrt.windows.devices.bluetooth ^
+  --hidden-import winrt.windows.devices.bluetooth.advertisement ^
+  --hidden-import winrt.windows.devices.bluetooth.genericattributeprofile ^
+  --hidden-import winrt.windows.storage.streams ^
   main.py || goto :err
 
 if not exist "dist\Jarvis.exe" goto :err

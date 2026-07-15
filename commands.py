@@ -1058,6 +1058,50 @@ def kill_process(name: str) -> str:
         return f"Couldn't kill {n}: {e}"
 
 
+_ROBOT_HUB = None
+
+
+def set_robot_hub(hub):
+    global _ROBOT_HUB
+    _ROBOT_HUB = hub
+
+
+def _robot():
+    if _ROBOT_HUB is None or not _ROBOT_HUB.is_connected():
+        return None
+    return _ROBOT_HUB
+
+
+def robot_forward(value: str = "") -> str:
+    hub = _robot()
+    return hub.drive("forward") if hub else "The rover isn't connected."
+
+
+def robot_backward(value: str = "") -> str:
+    hub = _robot()
+    return hub.drive("backward") if hub else "The rover isn't connected."
+
+
+def robot_turn(direction: str) -> str:
+    hub = _robot()
+    return hub.turn(direction) if hub else "The rover isn't connected."
+
+
+def robot_stop(value: str = "") -> str:
+    hub = _robot()
+    return hub.stop_all() if hub else "The rover isn't connected."
+
+
+def robot_head(direction: str) -> str:
+    hub = _robot()
+    return hub.turn_head(direction) if hub else "The rover isn't connected."
+
+
+def robot_claw(action: str) -> str:
+    hub = _robot()
+    return hub.claw(action) if hub else "The rover isn't connected."
+
+
 def execute(action: str, value: str) -> str:
     a = (action or "").lower()
     v = value or ""
@@ -1094,4 +1138,10 @@ def execute(action: str, value: str) -> str:
     if a == "clip_set": return clipboard_set(v)
     if a == "window": return window(v)
     if a == "kill": return kill_process(v)
+    if a == "robot_forward": return robot_forward(v)
+    if a == "robot_backward": return robot_backward(v)
+    if a == "robot_turn": return robot_turn(v)
+    if a == "robot_stop": return robot_stop(v)
+    if a == "robot_head": return robot_head(v)
+    if a == "robot_claw": return robot_claw(v)
     return ""

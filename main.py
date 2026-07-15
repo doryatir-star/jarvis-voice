@@ -2,10 +2,16 @@ import re
 import sys
 from PyQt5 import QtCore, QtWidgets
 
-from config import ASSISTANT_NAME, USER_NAME
+from config import (
+    ASSISTANT_NAME, USER_NAME,
+    ROBOT_HUB_NAME, ROBOT_HUB_MAC, ROBOT_CLAW_PORT, ROBOT_HEAD_PORT,
+    ROBOT_DRIVE_SPEED, ROBOT_DRIVE_SECONDS, ROBOT_TURN_SECONDS,
+    ROBOT_LEFT_INVERT, ROBOT_RIGHT_INVERT,
+)
 from ui import JarvisWindow
 from voice import Voice, list_input_devices
 from brain import Brain
+from lego_hub import LegoHub
 import commands
 commands.build_app_index()
 
@@ -36,6 +42,7 @@ class JarvisSignals(QtCore.QObject):
     jarvis_said = QtCore.pyqtSignal(str)
     status = QtCore.pyqtSignal(str)
     level = QtCore.pyqtSignal(float)
+    hub_status = QtCore.pyqtSignal(str)
 
 
 class Jarvis:
@@ -56,8 +63,21 @@ class Jarvis:
         self.sig.jarvis_said.connect(self.win.append_jarvis)
         self.sig.status.connect(self.win.set_status)
         self.sig.level.connect(self.win.set_mic_level)
+        self.sig.hub_status.connect(self.win.rover_panel.set_value)
         self.win.mic_btn.toggled.connect(self._mic_toggled)
         self.win.device_changed.connect(self._on_device_change)
+
+        self.hub = LegoHub(
+            hub_name=ROBOT_HUB_NAME, hub_mac=ROBOT_HUB_MAC,
+            claw_port=ROBOT_CLAW_PORT, head_port=ROBOT_HEAD_PORT,
+            drive_speed=ROBOT_DRIVE_SPEED, drive_seconds=ROBOT_DRIVE_SECONDS,
+            turn_seconds=ROBOT_TURN_SECONDS,
+            left_invert=ROBOT_LEFT_INVERT, right_invert=ROBOT_RIGHT_INVERT,
+            on_status=lambda s: self.sig.hub_status.emit(s.capitalize()),
+            on_error=lambda m: self.sig.jarvis_said.emit(m),
+        )
+        commands.set_robot_hub(self.hub)
+        self.hub.start()
 
         # Populate device picker
         devices = list_input_devices()
