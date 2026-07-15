@@ -23,13 +23,16 @@ page in Bluefy instead of Safari.
 
 ## Getting this page onto your phone
 
-This is a set of plain HTML/CSS/JS files — it needs to be hosted somewhere
-with a URL, since `file://` pages can't use Web Bluetooth either. The
-easiest option is **GitHub Pages**, since this repo already uses it (see
-the `docs/` folder). This new `web-rover-app/` folder is separate and
-**is not automatically published yet** — ask to have it merged into the
-branch/folder GitHub Pages actually serves (or moved into `docs/`) to get
-a real URL you can open on your phone in Bluefy.
+This lives at `docs/rover/` specifically so GitHub Pages (which already
+serves this repo's `docs/` folder) picks it up automatically once this is
+on the repo's default branch. If GitHub Pages is enabled for this repo,
+the URL will be:
+
+    https://doryatir-star.github.io/jarvis-voice/rover/
+
+If that link 404s, GitHub Pages likely isn't turned on yet for this repo —
+turn it on in the repo's Settings > Pages (source: deploy from a branch,
+folder: `/docs`), or ask for help getting it enabled.
 
 ## Using it
 
