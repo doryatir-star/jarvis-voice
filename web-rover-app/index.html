@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LEGO Rover Controller</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>LEGO Rover</h1>
+    <div id="status" class="status disconnected">Not connected</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="connect">Connect</button>
+    <button class="tab-btn" data-tab="controller">Controller</button>
+    <button class="tab-btn" data-tab="console">Console</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+  </nav>
+
+  <main>
+    <section id="tab-connect" class="tab-panel active">
+      <p class="hint">
+        On iPhone, open this page in the <strong>Bluefy</strong> browser app
+        (install it free/cheap from the App Store) — Safari blocks Web
+        Bluetooth entirely, so this won't work there.
+      </p>
+      <button id="connectBtn" class="brick blue">Scan &amp; Connect</button>
+      <button id="disconnectBtn" class="brick red" hidden>Disconnect</button>
+    </section>
+
+    <section id="tab-controller" class="tab-panel">
+      <h2>Drive</h2>
+      <button id="fwdBtn" class="brick green wide">&#9650; Forward</button>
+      <div class="row">
+        <button id="leftBtn" class="brick blue">&#9664; Left</button>
+        <button id="stopBtn" class="brick red">&#9632; Stop</button>
+        <button id="rightBtn" class="brick blue">Right &#9654;</button>
+      </div>
+      <button id="backBtn" class="brick green wide">&#9660; Backward</button>
+
+      <h2>Head</h2>
+      <div class="row">
+        <button id="headLeftBtn" class="brick yellow">Look Left</button>
+        <button id="headCenterBtn" class="brick yellow">Center</button>
+        <button id="headRightBtn" class="brick yellow">Look Right</button>
+      </div>
+
+      <h2>Claw</h2>
+      <div class="row">
+        <button id="clawOpenBtn" class="brick yellow">Open</button>
+        <button id="clawCloseBtn" class="brick yellow">Close</button>
+      </div>
+
+      <h2>Port test</h2>
+      <div class="row">
+        <button id="nudgeCBtn" class="brick gray">Nudge Port C</button>
+        <button id="nudgeDBtn" class="brick gray">Nudge Port D</button>
+      </div>
+      <p class="hint">Watch which motor moves, then set Claw/Head port in Settings.</p>
+    </section>
+
+    <section id="tab-console" class="tab-panel">
+      <div id="log" class="log" aria-live="polite"></div>
+      <form id="consoleForm" class="console-input">
+        <input id="consoleInput" type="text" autocapitalize="none" autocomplete="off"
+               placeholder="forward / claw open / raw 0a0081...">
+        <button type="submit" class="brick blue">Run</button>
+      </form>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <label>Claw port
+        <select id="clawPortSel">
+          <option value="2">C</option>
+          <option value="3">D</option>
+        </select>
+      </label>
+      <label>Head port
+        <select id="headPortSel">
+          <option value="2">C</option>
+          <option value="3">D</option>
+        </select>
+      </label>
+      <p id="portWarning" class="warning" hidden>Claw and head are set to the same port — fix this before testing.</p>
+      <label>Drive speed
+        <input id="speedInput" type="number" min="10" max="100" step="10">
+      </label>
+      <label>Drive duration (seconds)
+        <input id="driveSecInput" type="number" min="0.5" max="5" step="0.5">
+      </label>
+      <label>Turn duration (seconds)
+        <input id="turnSecInput" type="number" min="0.3" max="3" step="0.1">
+      </label>
+    </section>
+  </main>
+
+  <script src="lwp3.js"></script>
+  <script src="rover-hub.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
