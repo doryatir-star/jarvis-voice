@@ -30,20 +30,31 @@ class RoverHub {
 
   async connect() {
     if (!navigator.bluetooth) {
-      this.log("Web Bluetooth isn't available in this browser. On iPhone, use the Bluefy app instead of Safari.");
+      const msg = "Web Bluetooth isn't available in this browser. On iPhone, use the Bluefy app instead of Safari.";
+      this.log(msg);
+      this.onStatus('disconnected', null, msg);
       return;
     }
     try {
       this.onStatus('connecting');
-      this.log('Requesting a LEGO hub...');
+      this.log('Opening the Bluetooth device picker...');
+      // Using acceptAllDevices instead of a services filter: some LEGO hub
+      // firmware/BLE stack combinations don't put the full 128-bit service
+      // UUID in every advertisement packet, which can make filtered
+      // requestDevice() calls silently show an empty picker (or none at
+      // all) instead of a clear error. Showing every nearby device is less
+      // tidy but far more reliable — look for "LEGO" or "Move Hub" in the
+      // list.
       this.device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [HUB_SERVICE_UUID] }],
+        acceptAllDevices: true,
+        optionalServices: [HUB_SERVICE_UUID],
       });
       this.device.addEventListener('gattserverdisconnected', () => {
         this.characteristic = null;
         this.onStatus('disconnected');
         this.log('Disconnected.');
       });
+      this.log(`Picked "${this.device.name || 'unnamed device'}". Connecting to it...`);
       const server = await this.device.gatt.connect();
       const service = await server.getPrimaryService(HUB_SERVICE_UUID);
       this.characteristic = await service.getCharacteristic(HUB_CHARACTERISTIC_UUID);
@@ -52,7 +63,7 @@ class RoverHub {
       this.onStatus('connected', this.device.name || 'LEGO Hub');
       this.log(`Connected to ${this.device.name || 'LEGO hub'}.`);
     } catch (err) {
-      this.onStatus('disconnected');
+      this.onStatus('disconnected', null, err.message);
       this.log('Connect failed: ' + err.message);
     }
   }

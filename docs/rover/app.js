@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
       while (logEl.childElementCount > 300) logEl.removeChild(logEl.firstChild);
       logEl.scrollTop = logEl.scrollHeight;
     },
-    onStatus: (state, name) => {
+    onStatus: (state, name, errorMessage) => {
       const labels = {
         disconnected: 'Not connected',
         connecting: 'Connecting…',
@@ -70,6 +70,17 @@ document.addEventListener('DOMContentLoaded', () => {
       statusEl.textContent = labels[state] || state;
       statusEl.className = 'status ' + state;
       document.getElementById('disconnectBtn').hidden = state !== 'connected';
+
+      const errorEl = document.getElementById('connectError');
+      if (errorMessage) {
+        errorEl.textContent = errorMessage;
+        errorEl.hidden = false;
+        // A blocking alert too, so the error is impossible to miss no
+        // matter which tab is open when it happens.
+        window.alert('Connect failed:\n\n' + errorMessage);
+      } else if (state === 'connecting') {
+        errorEl.hidden = true;
+      }
     },
   });
 
