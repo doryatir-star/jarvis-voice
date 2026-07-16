@@ -85,6 +85,12 @@ class RoverScript {
       hub.stopAll();
     };
 
+    const COLORS = {
+      off: 0, black: 0, pink: 1, magenta: 1, purple: 2, violet: 2,
+      blue: 3, lightblue: 4, cyan: 5, teal: 5, green: 6, lime: 6,
+      yellow: 7, orange: 8, red: 9, white: 10,
+    };
+
     return {
       forward: (sec) => moveFor(() => hub.driveDir('forward'), sec, hub.driveSeconds),
       backward: (sec) => moveFor(() => hub.driveDir('backward'), sec, hub.driveSeconds),
@@ -92,12 +98,35 @@ class RoverScript {
       right: (sec) => moveFor(() => hub.turnDir('right'), sec, hub.turnSeconds),
       turnLeft: (sec) => moveFor(() => hub.turnDir('left'), sec, hub.turnSeconds),
       turnRight: (sec) => moveFor(() => hub.turnDir('right'), sec, hub.turnSeconds),
+      // Independent-wheel driving for a duration — curves, spins, anything.
+      arc: async (leftPercent, rightPercent, sec) => {
+        check();
+        hub.motors(leftPercent, rightPercent);
+        await wait(sec == null ? hub.driveSeconds : sec);
+        hub.stopAll();
+      },
+      // Set both motors and keep going until stop()/next command.
+      setMotors: (leftPercent, rightPercent) => { check(); hub.motors(leftPercent, rightPercent); },
+      setSpeed: (percent) => { check(); hub.driveSpeed = Math.max(0, Math.min(100, Math.round(Number(percent) || 0))); },
       stop: () => { check(); hub.stopAll(); },
       headLeft: () => { check(); hub.turnHead('left'); },
       headRight: () => { check(); hub.turnHead('right'); },
       headCenter: () => { check(); hub.turnHead('center'); },
+      head: (degrees) => { check(); hub.headTo(degrees); },
       clawOpen: () => { check(); hub.claw('open'); },
       clawClose: () => { check(); hub.claw('close'); },
+      light: (color) => {
+        check();
+        const idx = typeof color === 'number' ? color : (COLORS[String(color).toLowerCase()] ?? 10);
+        hub.setLight(idx);
+      },
+      random: (min, max) => {
+        if (max == null) { max = min == null ? 1 : min; min = 0; }
+        return Math.random() * (Number(max) - Number(min)) + Number(min);
+      },
+      repeat: async (n, fn) => {
+        for (let i = 0; i < n; i++) { check(); await fn(i); }
+      },
       wait,
       log,
       print: log,

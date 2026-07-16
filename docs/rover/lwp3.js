@@ -58,6 +58,15 @@ function gotoAbsolutePosition(port, angle, speed, maxPower, endState) {
   return withHeader(MESSAGE_TYPE_PORT_OUTPUT_COMMAND, body);
 }
 
+// The Move Hub's built-in RGB LED lives on port 0x32 (50).
+const LED_PORT = 0x32;
+
+/** Sets the hub's built-in LED to a color index (0=off … 10=white). */
+function hubLightColor(colorIndex) {
+  const body = [LED_PORT, STARTUP_AND_COMPLETION, SUBCOMMAND_WRITE_DIRECT_MODE_DATA, 0x00, colorIndex & 0xff];
+  return withHeader(MESSAGE_TYPE_PORT_OUTPUT_COMMAND, body);
+}
+
 /** Parses a "Hub Attached I/O" notification (sent whenever a motor is
  * plugged into or unplugged from an external port). */
 function parseHubAttachedIO(bytes) {

@@ -91,15 +91,25 @@
 
     <section id="tab-code" class="tab-panel">
       <p class="hint">
-        Write real code to program the rover, then Run. Functions you can use
-        (all need <code>await</code>):
+        Write real code to program the rover, then Run. Building blocks (most
+        need <code>await</code>):
         <code>forward(sec)</code>, <code>backward(sec)</code>,
         <code>left(sec)</code>, <code>right(sec)</code>,
+        <code>arc(left%, right%, sec)</code>, <code>setMotors(left%, right%)</code>,
+        <code>setSpeed(%)</code>,
         <code>headLeft()</code>, <code>headRight()</code>, <code>headCenter()</code>,
+        <code>head(degrees)</code>,
         <code>clawOpen()</code>, <code>clawClose()</code>,
-        <code>stop()</code>, <code>wait(sec)</code>, <code>log(...)</code>.
-        Connect the hub first.
+        <code>light("red")</code>, <code>stop()</code>, <code>wait(sec)</code>,
+        <code>repeat(n, fn)</code>, <code>random(min, max)</code>, <code>log(...)</code>.
+        Plus real JS: <code>for</code>, <code>while</code>, <code>if</code>,
+        variables. Connect the hub first.
       </p>
+      <label class="codeexamples-label">Load an example:
+        <select id="codeExamples">
+          <option value="">— pick one —</option>
+        </select>
+      </label>
       <textarea id="codeEditor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
       <div class="row">
         <button id="codeRunBtn" class="brick green">▶ Run</button>

@@ -143,6 +143,27 @@ class RoverHub {
     this._sendPower(PORT.B, right);
   }
 
+  /** Set both drive motors to independent signed powers (-100..100).
+   * Continuous — no auto-stop. Unlocks curves, spins and custom moves. */
+  motors(leftPercent, rightPercent) {
+    clearTimeout(this._stopTimer);
+    const clamp = (v) => Math.max(-100, Math.min(100, Math.round(Number(v) || 0)));
+    this._sendPower(PORT.A, clamp(leftPercent));
+    this._sendPower(PORT.B, clamp(rightPercent));
+  }
+
+  /** Turn the head to an absolute angle in degrees (any value). */
+  headTo(degrees) {
+    this._write(gotoAbsolutePosition(this.headPort, Math.round(Number(degrees) || 0), 40, 60, END_STATE.HOLD));
+    this.log('Head -> ' + Math.round(Number(degrees) || 0) + '°');
+  }
+
+  /** Set the hub's built-in LED color by index (0=off … 10=white). */
+  setLight(colorIndex) {
+    this._write(hubLightColor(colorIndex));
+    this.log('Light -> ' + colorIndex);
+  }
+
   drive(direction) {
     this.driveDir(direction);
     this._scheduleAutoStop(this.driveSeconds);

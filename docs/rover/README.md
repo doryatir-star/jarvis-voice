@@ -63,11 +63,18 @@ folder: `/docs`), or ask for help getting it enabled.
    hub, whether reconnect worked) so you can see exactly what happened.
 3d. **Code tab**: write a real program (JavaScript) to control the rover, then
    Run. This works fine on iPhone (typing + Bluetooth, no microphone). You get
-   real loops, variables and conditions. Available functions (all need
-   `await`): `forward(sec)`, `backward(sec)`, `left(sec)`, `right(sec)`,
-   `headLeft()`, `headRight()`, `headCenter()`, `clawOpen()`, `clawClose()`,
-   `stop()`, `wait(sec)`, `log(...)`. Connect the hub first; Stop halts a
-   running script; your script is saved on the device. Example:
+   real loops, variables and conditions. Building blocks (most need `await`):
+   `forward(sec)`, `backward(sec)`, `left(sec)`, `right(sec)`,
+   `arc(left%, right%, sec)` (curves/spins with independent wheels),
+   `setMotors(left%, right%)`, `setSpeed(%)`,
+   `headLeft()`, `headRight()`, `headCenter()`, `head(degrees)`,
+   `clawOpen()`, `clawClose()`, `light("red")` (off/pink/purple/blue/
+   lightblue/cyan/green/yellow/orange/red/white), `stop()`, `wait(sec)`,
+   `repeat(n, fn)`, `random(min, max)`, `log(...)`. There's also an
+   **Examples** menu (Square, Spin, Zigzag, Curvy loop, Wiggle head, Light
+   show, Random walk, Grab and carry) to load and remix. Connect the hub
+   first; Stop halts a running script; your script is saved on the device.
+   Example:
 
    ```js
    for (let i = 0; i < 4; i++) {

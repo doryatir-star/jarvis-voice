@@ -206,16 +206,80 @@ document.addEventListener('DOMContentLoaded', () => {
   const codeStopBtn = document.getElementById('codeStopBtn');
   const codeLogEl = document.getElementById('codeLog');
 
-  const DEFAULT_SCRIPT = [
-    '// Drive in a square, then grab.',
-    'for (let i = 0; i < 4; i++) {',
-    '  await forward(1);',
-    '  await left(0.6);',
-    '}',
-    'await clawClose();',
-    'log("Done!");',
-  ].join('\n');
+  const EXAMPLES = {
+    'Square': [
+      '// Drive in a square, then grab.',
+      'for (let i = 0; i < 4; i++) {',
+      '  await forward(1);',
+      '  await left(0.6);',
+      '}',
+      'await clawClose();',
+      'log("Done!");',
+    ].join('\n'),
+    'Spin in place': [
+      '// Spin one way, then the other.',
+      'await arc(60, -60, 2);',
+      'await arc(-60, 60, 2);',
+    ].join('\n'),
+    'Zigzag': [
+      'for (let i = 0; i < 3; i++) {',
+      '  await arc(70, 30, 0.8);',
+      '  await arc(30, 70, 0.8);',
+      '}',
+    ].join('\n'),
+    'Curvy loop': [
+      '// A big smooth circle using an arc.',
+      'await arc(80, 40, 4);',
+      'await stop();',
+    ].join('\n'),
+    'Wiggle head': [
+      'for (let i = 0; i < 4; i++) {',
+      '  await headLeft();  await wait(0.4);',
+      '  await headRight(); await wait(0.4);',
+      '}',
+      'await headCenter();',
+    ].join('\n'),
+    'Light show': [
+      'const colors = ["red","orange","yellow","green","blue","purple","white"];',
+      'for (let i = 0; i < 3; i++) {',
+      '  for (const c of colors) { light(c); await wait(0.25); }',
+      '}',
+      'light("off");',
+    ].join('\n'),
+    'Random walk': [
+      '// Wander around randomly for a bit.',
+      'await repeat(8, async () => {',
+      '  await forward(random(0.3, 1));',
+      '  if (random(0, 1) < 0.5) { await left(random(0.2, 0.6)); }',
+      '  else { await right(random(0.2, 0.6)); }',
+      '});',
+    ].join('\n'),
+    'Grab and carry': [
+      'await clawOpen();',
+      'await forward(1.5);',
+      'await clawClose();',
+      'await wait(0.3);',
+      'await backward(1.5);',
+      'await clawOpen();',
+    ].join('\n'),
+  };
+  const DEFAULT_SCRIPT = EXAMPLES['Square'];
   codeEditor.value = localStorage.getItem('roverScript') || DEFAULT_SCRIPT;
+
+  const codeExamples = document.getElementById('codeExamples');
+  Object.keys(EXAMPLES).forEach((name) => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    codeExamples.appendChild(opt);
+  });
+  codeExamples.addEventListener('change', () => {
+    const code = EXAMPLES[codeExamples.value];
+    if (code) {
+      codeEditor.value = code;
+      localStorage.setItem('roverScript', code);
+    }
+    codeExamples.value = '';
+  });
 
   const codeLog = (line) => {
     const div = document.createElement('div');
