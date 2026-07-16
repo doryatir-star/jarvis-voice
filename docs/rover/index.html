@@ -72,6 +72,19 @@
       <button id="voiceBtn" class="brick blue wide">🎤 Start listening</button>
       <button id="voiceToggleBtn" class="brick gray" hidden>Pause mic</button>
       <p id="voiceStatus" class="status disconnected">Voice off</p>
+
+      <div id="holdWrap" hidden>
+        <hr style="border-color:#333;margin:16px 0">
+        <p class="hint">
+          <strong>Experimental — Hold to talk.</strong> Uses an offline voice
+          engine (one-time ~40 MB download) instead of Apple's blocked one.
+          Connect the hub first, then hold the button, say a command, and
+          release. It may still not work on iPhone — opening the mic can drop
+          the hub — but it'll try to reconnect and the log shows what happened.
+        </p>
+        <button id="holdBtn" class="brick yellow wide">🎤 Hold to talk</button>
+      </div>
+
       <div id="voiceLog" class="log" aria-live="polite"></div>
     </section>
 
@@ -113,6 +126,7 @@
   <script src="lwp3.js"></script>
   <script src="rover-hub.js"></script>
   <script src="voice.js"></script>
+  <script src="holdtalk.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

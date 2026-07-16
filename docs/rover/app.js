@@ -176,10 +176,29 @@ document.addEventListener('DOMContentLoaded', () => {
     voiceLog(voice.blockedReason || "Voice isn't available in this browser — use the Controller buttons instead.");
     voiceBtn.disabled = true;
     voiceBtn.textContent = '🎤 Voice not available';
+    // Where the always-listen path is blocked (iPhone/Bluefy), offer the
+    // experimental offline push-to-talk instead.
+    document.getElementById('holdWrap').hidden = false;
   }
 
   voiceBtn.addEventListener('click', () => voice.start());
   voiceToggleBtn.addEventListener('click', () => voice.toggle());
+
+  // --- Experimental hold-to-talk (offline Whisper) ---
+  const holdBtn = document.getElementById('holdBtn');
+  const holdTalk = new HoldToTalk({
+    hub,
+    onLog: voiceLog,
+    onStatus: (state) => {
+      const map = { recording: '● Recording — release to send', transcribing: 'Transcribing…', ready: '🎤 Hold to talk', blocked: 'Mic blocked' };
+      holdBtn.textContent = map[state] || (typeof state === 'string' && state.startsWith('loading') ? state : '🎤 Hold to talk');
+      holdBtn.classList.toggle('listening', state === 'recording');
+    },
+  });
+  const holdStart = (e) => { e.preventDefault(); holdTalk.press(); };
+  const holdEnd = (e) => { e.preventDefault(); holdTalk.release(); };
+  ['pointerdown', 'touchstart', 'mousedown'].forEach((ev) => holdBtn.addEventListener(ev, holdStart, { passive: false }));
+  ['pointerup', 'pointerleave', 'pointercancel', 'touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach((ev) => holdBtn.addEventListener(ev, holdEnd, { passive: false }));
 
   // --- Settings tab ---
   const clawPortSel = document.getElementById('clawPortSel');

@@ -52,6 +52,15 @@ folder: `/docs`), or ask for help getting it enabled.
    detects this and disables itself (with a note) so it can't grab the mic —
    earlier it would grab the mic and that dropped the Bluetooth connection.
    On iPhone, use the Controller buttons.
+3c. **Experimental "Hold to talk"** (shown on the Voice tab when normal voice
+   is blocked, i.e. on iPhone): uses an offline in-browser voice engine
+   (Whisper, ~40 MB one-time download) instead of Apple's blocked one, as
+   push-to-talk — hold the button, speak, release. The mic is opened only
+   while held and fully released after, and the app tries to reconnect the
+   hub if the mic drop occurs. **It may still not work on iPhone** — if
+   opening the mic severs Bluetooth in Bluefy, the command may not reach the
+   hub. The Voice tab log prints diagnostics (whether the mic dropped the
+   hub, whether reconnect worked) so you can see exactly what happened.
 4. **Console tab**: a live log of every byte sent/received, plus a text
    box for typed commands: `forward`, `backward`, `left`, `right`, `stop`,
    `head left` / `head right` / `head center`, `claw open` / `claw close`,

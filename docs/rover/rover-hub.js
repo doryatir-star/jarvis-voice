@@ -106,6 +106,18 @@ class RoverHub {
     this.log("Couldn't reconnect automatically — tap Connect to reconnect.");
   }
 
+  /** Public: attempt to reconnect to the last hub without the device picker.
+   * Safe to call from a user gesture (e.g. releasing the hold-to-talk button),
+   * which gives iOS the best chance of allowing the reconnect. */
+  tryReconnect() {
+    if (!this.device) {
+      this.log('No hub to reconnect to — tap Connect first.');
+      return;
+    }
+    this._userDisconnected = false;
+    this._reconnect();
+  }
+
   disconnect() {
     this._userDisconnected = true;
     if (this.device && this.device.gatt.connected) {
