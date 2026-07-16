@@ -200,6 +200,48 @@ document.addEventListener('DOMContentLoaded', () => {
   ['pointerdown', 'touchstart', 'mousedown'].forEach((ev) => holdBtn.addEventListener(ev, holdStart, { passive: false }));
   ['pointerup', 'pointerleave', 'pointercancel', 'touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach((ev) => holdBtn.addEventListener(ev, holdEnd, { passive: false }));
 
+  // --- Code tab ---
+  const codeEditor = document.getElementById('codeEditor');
+  const codeRunBtn = document.getElementById('codeRunBtn');
+  const codeStopBtn = document.getElementById('codeStopBtn');
+  const codeLogEl = document.getElementById('codeLog');
+
+  const DEFAULT_SCRIPT = [
+    '// Drive in a square, then grab.',
+    'for (let i = 0; i < 4; i++) {',
+    '  await forward(1);',
+    '  await left(0.6);',
+    '}',
+    'await clawClose();',
+    'log("Done!");',
+  ].join('\n');
+  codeEditor.value = localStorage.getItem('roverScript') || DEFAULT_SCRIPT;
+
+  const codeLog = (line) => {
+    const div = document.createElement('div');
+    div.textContent = line;
+    codeLogEl.appendChild(div);
+    while (codeLogEl.childElementCount > 200) codeLogEl.removeChild(codeLogEl.firstChild);
+    codeLogEl.scrollTop = codeLogEl.scrollHeight;
+  };
+
+  const script = new RoverScript({
+    hub,
+    onLog: codeLog,
+    onRunning: (isRunning) => {
+      codeRunBtn.disabled = isRunning;
+      codeStopBtn.disabled = !isRunning;
+    },
+  });
+  codeStopBtn.disabled = true;
+
+  codeRunBtn.addEventListener('click', () => {
+    localStorage.setItem('roverScript', codeEditor.value);
+    script.run(codeEditor.value);
+  });
+  codeStopBtn.addEventListener('click', () => script.stop());
+  codeEditor.addEventListener('change', () => localStorage.setItem('roverScript', codeEditor.value));
+
   // --- Settings tab ---
   const clawPortSel = document.getElementById('clawPortSel');
   const headPortSel = document.getElementById('headPortSel');

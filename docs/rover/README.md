@@ -61,6 +61,23 @@ folder: `/docs`), or ask for help getting it enabled.
    opening the mic severs Bluetooth in Bluefy, the command may not reach the
    hub. The Voice tab log prints diagnostics (whether the mic dropped the
    hub, whether reconnect worked) so you can see exactly what happened.
+3d. **Code tab**: write a real program (JavaScript) to control the rover, then
+   Run. This works fine on iPhone (typing + Bluetooth, no microphone). You get
+   real loops, variables and conditions. Available functions (all need
+   `await`): `forward(sec)`, `backward(sec)`, `left(sec)`, `right(sec)`,
+   `headLeft()`, `headRight()`, `headCenter()`, `clawOpen()`, `clawClose()`,
+   `stop()`, `wait(sec)`, `log(...)`. Connect the hub first; Stop halts a
+   running script; your script is saved on the device. Example:
+
+   ```js
+   for (let i = 0; i < 4; i++) {
+     await forward(1);
+     await left(0.6);
+   }
+   await clawClose();
+   log("Done!");
+   ```
+
 4. **Console tab**: a live log of every byte sent/received, plus a text
    box for typed commands: `forward`, `backward`, `left`, `right`, `stop`,
    `head left` / `head right` / `head center`, `claw open` / `claw close`,

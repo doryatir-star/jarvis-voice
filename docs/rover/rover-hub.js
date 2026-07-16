@@ -125,19 +125,32 @@ class RoverHub {
     }
   }
 
-  drive(direction) {
+  /** Start driving forward/backward continuously — no auto-stop timer.
+   * Used by scripts that control the duration themselves. */
+  driveDir(direction) {
+    clearTimeout(this._stopTimer);
     const sign = direction === 'forward' ? 1 : -1;
     this._sendPower(PORT.A, this.driveSpeed * sign);
     this._sendPower(PORT.B, this.driveSpeed * sign);
+  }
+
+  /** Start turning left/right continuously — no auto-stop timer. */
+  turnDir(direction) {
+    clearTimeout(this._stopTimer);
+    const left = direction === 'left' ? -this.driveSpeed : this.driveSpeed;
+    const right = direction === 'left' ? this.driveSpeed : -this.driveSpeed;
+    this._sendPower(PORT.A, left);
+    this._sendPower(PORT.B, right);
+  }
+
+  drive(direction) {
+    this.driveDir(direction);
     this._scheduleAutoStop(this.driveSeconds);
     this.log(direction === 'forward' ? 'Moving forward.' : 'Moving backward.');
   }
 
   turn(direction) {
-    const left = direction === 'left' ? -this.driveSpeed : this.driveSpeed;
-    const right = direction === 'left' ? this.driveSpeed : -this.driveSpeed;
-    this._sendPower(PORT.A, left);
-    this._sendPower(PORT.B, right);
+    this.turnDir(direction);
     this._scheduleAutoStop(this.turnSeconds);
     this.log(direction === 'left' ? 'Turning left.' : 'Turning right.');
   }
