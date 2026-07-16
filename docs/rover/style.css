@@ -147,7 +147,8 @@ h2 {
 
 .console-input button { flex: none; width: 80px; }
 
-#codeEditor {
+#codeEditor,
+#pyEditor {
   width: 100%;
   min-height: 40vh;
   padding: 10px;
@@ -163,14 +164,27 @@ h2 {
   overflow-wrap: normal;
 }
 
-#tab-code .hint code {
+#tab-code .hint code,
+#tab-python .hint code {
   background: #000;
   padding: 1px 4px;
   border-radius: 4px;
   color: var(--lego-yellow);
 }
 
-#tab-code .log { height: 22vh; }
+#tab-code .log,
+#tab-python .log { height: 22vh; }
+
+#pyExamples {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: var(--panel);
+  color: #fff;
+}
 
 .codeexamples-label {
   display: block;

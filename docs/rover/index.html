@@ -17,6 +17,7 @@
     <button class="tab-btn" data-tab="controller">Controller</button>
     <button class="tab-btn" data-tab="voice">Voice</button>
     <button class="tab-btn" data-tab="code">Code</button>
+    <button class="tab-btn" data-tab="python">Python</button>
     <button class="tab-btn" data-tab="console">Console</button>
     <button class="tab-btn" data-tab="settings">Settings</button>
   </nav>
@@ -118,6 +119,35 @@
       <div id="codeLog" class="log" aria-live="polite"></div>
     </section>
 
+    <section id="tab-python" class="tab-panel">
+      <p class="hint">
+        Write real <strong>Python</strong> to program the rover — it runs in
+        your browser (no firmware flashing, your rover keeps working). Most
+        moves need <code>await</code>. Functions:
+        <code>await forward(sec)</code>, <code>await backward(sec)</code>,
+        <code>await left(sec)</code>, <code>await right(sec)</code>,
+        <code>await arc(left, right, sec)</code>, <code>set_speed(pct)</code>,
+        <code>head_left()</code>, <code>head_right()</code>, <code>head_center()</code>,
+        <code>await head(deg)</code>, <code>claw_open()</code>, <code>claw_close()</code>,
+        <code>light("red")</code>, <code>stop()</code>, <code>await wait(sec)</code>,
+        <code>rand(a, b)</code>, <code>print(...)</code>. Plus real Python:
+        <code>for</code>, <code>while</code>, <code>if</code>, <code>def</code>,
+        variables. Connect the hub first.
+        <em>Experimental — may not work in Bluefy; the Code tab always works.</em>
+      </p>
+      <label class="codeexamples-label">Load an example:
+        <select id="pyExamples">
+          <option value="">— pick one —</option>
+        </select>
+      </label>
+      <textarea id="pyEditor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <div class="row">
+        <button id="pyRunBtn" class="brick green">▶ Run</button>
+        <button id="pyStopBtn" class="brick red">■ Stop</button>
+      </div>
+      <div id="pyLog" class="log" aria-live="polite"></div>
+    </section>
+
     <section id="tab-console" class="tab-panel">
       <div id="log" class="log" aria-live="polite"></div>
       <form id="consoleForm" class="console-input">
@@ -161,6 +191,7 @@
   <script src="voice.js"></script>
   <script src="holdtalk.js"></script>
   <script src="script.js"></script>
+  <script src="python.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

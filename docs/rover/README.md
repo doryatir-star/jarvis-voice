@@ -85,6 +85,30 @@ folder: `/docs`), or ask for help getting it enabled.
    log("Done!");
    ```
 
+3e. **Python tab (experimental)**: write real **Python** to program the rover,
+   Pybricks-style — but it runs *in your browser* (via the open-source Brython
+   engine), so there's **no firmware flashing** and your rover keeps working on
+   its stock firmware. Functions (snake_case; most need `await`): `forward(sec)`,
+   `backward(sec)`, `left(sec)`, `right(sec)`, `arc(left, right, sec)`,
+   `set_motors(l, r)`, `set_speed(pct)`, `head_left()`, `head_right()`,
+   `head_center()`, `head(deg)`, `claw_open()`, `claw_close()`, `light("red")`,
+   `stop()`, `wait(sec)`, `rand(a, b)`, `print(...)`, plus real Python `for`/
+   `while`/`if`/`def`/variables. Example:
+
+   ```python
+   for i in range(4):
+       await forward(1)
+       await left(0.6)
+   claw_close()
+   print("Done!")
+   ```
+
+   First Run downloads the Python engine (~1.3 MB, one-time). **This is an
+   original tool inspired by Python robot coding — it is not Pybricks, contains
+   no Pybricks code, and does not flash Pybricks firmware.** It may not work in
+   Bluefy on iPhone; if not, use the (JavaScript) **Code** tab, which always
+   works.
+
 4. **Console tab**: a live log of every byte sent/received, plus a text
    box for typed commands: `forward`, `backward`, `left`, `right`, `stop`,
    `head left` / `head right` / `head center`, `claw open` / `claw close`,

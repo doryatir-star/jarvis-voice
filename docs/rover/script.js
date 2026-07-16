@@ -8,7 +8,11 @@
 // remote eval and no sandbox beyond try/catch. A cancellation token lets the
 // Stop button halt a running script promptly.
 
-class StopError extends Error {}
+// Message is a sentinel so the Python runner can recognize a stop even after
+// Brython wraps it as a generic JavascriptError (which drops the JS class name).
+class StopError extends Error {
+  constructor() { super('ROVER_STOP'); }
+}
 
 // AsyncFunction constructor (not a global) so user code can use `await`.
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
@@ -63,9 +67,17 @@ class RoverScript {
   }
 
   _makeApi(token) {
+    return makeRoverApi(this.hub, token, this.onLog);
+  }
+}
+
+// Builds the robot API object used by BOTH the JS Code tab (RoverScript) and
+// the Python tab (RoverPython), so they share one tested implementation.
+// `check()` throws StopError when the token is cancelled, so any awaited call
+// aborts promptly when Stop is pressed.
+function makeRoverApi(hub, token, onLog) {
     const check = () => { if (token.cancelled) throw new StopError(); };
-    const hub = this.hub;
-    const log = (...args) => this.onLog(args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
+    const log = (...args) => onLog(args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' '));
 
     // Cancellable sleep — wakes in slices so Stop responds quickly.
     const wait = async (sec) => {
@@ -131,5 +143,4 @@ class RoverScript {
       log,
       print: log,
     };
-  }
 }

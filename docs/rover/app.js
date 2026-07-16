@@ -306,6 +306,87 @@ document.addEventListener('DOMContentLoaded', () => {
   codeStopBtn.addEventListener('click', () => script.stop());
   codeEditor.addEventListener('change', () => localStorage.setItem('roverScript', codeEditor.value));
 
+  // --- Python tab ---
+  const pyEditor = document.getElementById('pyEditor');
+  const pyRunBtn = document.getElementById('pyRunBtn');
+  const pyStopBtn = document.getElementById('pyStopBtn');
+  const pyLogEl = document.getElementById('pyLog');
+
+  const PY_EXAMPLES = {
+    'Square': [
+      '# Drive in a square, then grab.',
+      'for i in range(4):',
+      '    await forward(1)',
+      '    await left(0.6)',
+      'claw_close()',
+      'print("Done!")',
+    ].join('\n'),
+    'Spin': [
+      'await arc(60, -60, 2)',
+      'await arc(-60, 60, 2)',
+    ].join('\n'),
+    'Zigzag': [
+      'for i in range(3):',
+      '    await arc(70, 30, 0.8)',
+      '    await arc(30, 70, 0.8)',
+    ].join('\n'),
+    'Light show': [
+      'colors = ["red", "orange", "yellow", "green", "blue", "purple", "white"]',
+      'for i in range(3):',
+      '    for c in colors:',
+      '        light(c)',
+      '        await wait(0.25)',
+      'light("off")',
+    ].join('\n'),
+    'Random walk': [
+      'for i in range(8):',
+      '    await forward(rand(0.3, 1))',
+      '    if rand(0, 1) < 0.5:',
+      '        await left(rand(0.2, 0.6))',
+      '    else:',
+      '        await right(rand(0.2, 0.6))',
+    ].join('\n'),
+  };
+  const PY_DEFAULT = PY_EXAMPLES['Square'];
+  pyEditor.value = localStorage.getItem('roverPython') || PY_DEFAULT;
+
+  const pyExamples = document.getElementById('pyExamples');
+  Object.keys(PY_EXAMPLES).forEach((name) => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    pyExamples.appendChild(opt);
+  });
+  pyExamples.addEventListener('change', () => {
+    const c = PY_EXAMPLES[pyExamples.value];
+    if (c) { pyEditor.value = c; localStorage.setItem('roverPython', c); }
+    pyExamples.value = '';
+  });
+
+  const pyLog = (line) => {
+    const div = document.createElement('div');
+    div.textContent = line;
+    pyLogEl.appendChild(div);
+    while (pyLogEl.childElementCount > 200) pyLogEl.removeChild(pyLogEl.firstChild);
+    pyLogEl.scrollTop = pyLogEl.scrollHeight;
+  };
+
+  const pyRunner = new RoverPython({
+    hub,
+    onLog: pyLog,
+    onRunning: (isRunning) => {
+      pyRunBtn.disabled = isRunning;
+      pyStopBtn.disabled = !isRunning;
+    },
+  });
+  pyStopBtn.disabled = true;
+
+  pyRunBtn.addEventListener('click', () => {
+    localStorage.setItem('roverPython', pyEditor.value);
+    pyRunner.run(pyEditor.value);
+  });
+  pyStopBtn.addEventListener('click', () => pyRunner.stop());
+  pyEditor.addEventListener('change', () => localStorage.setItem('roverPython', pyEditor.value));
+
   // --- Settings tab ---
   const clawPortSel = document.getElementById('clawPortSel');
   const headPortSel = document.getElementById('headPortSel');
