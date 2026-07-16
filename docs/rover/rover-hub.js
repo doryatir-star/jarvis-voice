@@ -17,6 +17,9 @@ class RoverHub {
 
     this.clawPort = this._loadInt('clawPort', PORT.D);
     this.headPort = this._loadInt('headPort', PORT.C);
+    // How far the head turns for the Look Left/Right buttons. Kept small by
+    // default because most heads can't physically rotate a full 90°.
+    this.headAngle = this._loadInt('headAngle', 30);
     this.driveSpeed = this._loadInt('driveSpeed', 60);
     this.driveSeconds = this._loadFloat('driveSeconds', 1.5);
     this.turnSeconds = this._loadFloat('turnSeconds', 0.8);
@@ -184,9 +187,13 @@ class RoverHub {
   }
 
   turnHead(direction) {
-    const angle = direction === 'left' ? -90 : direction === 'right' ? 90 : 0;
-    this._write(gotoAbsolutePosition(this.headPort, angle, 40, 60, END_STATE.HOLD));
-    this.log('Head -> ' + direction);
+    // Use the same small, gentle move the (working) Nudge uses — a full ±90°
+    // is beyond most heads' physical range and just stalls. Angle is
+    // adjustable in Settings.
+    const mag = this.headAngle;
+    const angle = direction === 'left' ? -mag : direction === 'right' ? mag : 0;
+    this._write(gotoAbsolutePosition(this.headPort, angle, 30, 50, END_STATE.HOLD));
+    this.log('Head -> ' + direction + ' (' + angle + '°)');
   }
 
   claw(action) {
@@ -213,6 +220,7 @@ class RoverHub {
 
   setClawPort(port) { this.clawPort = port; localStorage.setItem('clawPort', String(port)); }
   setHeadPort(port) { this.headPort = port; localStorage.setItem('headPort', String(port)); }
+  setHeadAngle(v) { this.headAngle = Math.max(5, Math.min(90, Math.round(Number(v) || 30))); localStorage.setItem('headAngle', String(this.headAngle)); }
   setDriveSpeed(v) { this.driveSpeed = v; localStorage.setItem('driveSpeed', String(v)); }
   setDriveSeconds(v) { this.driveSeconds = v; localStorage.setItem('driveSeconds', String(v)); }
   setTurnSeconds(v) { this.turnSeconds = v; localStorage.setItem('turnSeconds', String(v)); }

@@ -313,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const speedInput = document.getElementById('speedInput');
   const driveSecInput = document.getElementById('driveSecInput');
   const turnSecInput = document.getElementById('turnSecInput');
+  const headAngleInput = document.getElementById('headAngleInput');
 
   function refreshPortWarning() {
     portWarning.hidden = clawPortSel.value !== headPortSel.value;
@@ -323,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
   speedInput.value = String(hub.driveSpeed);
   driveSecInput.value = String(hub.driveSeconds);
   turnSecInput.value = String(hub.turnSeconds);
+  headAngleInput.value = String(hub.headAngle);
   refreshPortWarning();
 
   clawPortSel.addEventListener('change', () => {
@@ -336,6 +338,10 @@ document.addEventListener('DOMContentLoaded', () => {
   speedInput.addEventListener('change', () => hub.setDriveSpeed(parseInt(speedInput.value, 10)));
   driveSecInput.addEventListener('change', () => hub.setDriveSeconds(parseFloat(driveSecInput.value)));
   turnSecInput.addEventListener('change', () => hub.setTurnSeconds(parseFloat(turnSecInput.value)));
+  headAngleInput.addEventListener('change', () => {
+    hub.setHeadAngle(parseInt(headAngleInput.value, 10));
+    headAngleInput.value = String(hub.headAngle);
+  });
 
   if (!navigator.bluetooth) {
     hub.log("Heads up: this browser doesn't support Web Bluetooth. On iPhone, install the free/cheap 'Bluefy' app from the App Store and open this page there instead of Safari.");
