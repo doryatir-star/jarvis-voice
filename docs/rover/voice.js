@@ -85,13 +85,41 @@ function matchRoverIntent(text) {
 }
 
 class VoiceAssistant {
+  static _isIOS() {
+    return /iP(hone|ad|od)/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  static _computeBlockedReason(SR) {
+    if (!SR) {
+      return "Voice isn't available in this browser. Use the on-screen buttons instead.";
+    }
+    // On iOS, the only browsers that expose navigator.bluetooth are WebBLE
+    // apps like Bluefy (Safari has no Web Bluetooth). Those are WKWebView,
+    // where Apple blocks real speech recognition and starting the mic drops
+    // the Bluetooth link — so voice can't work AND would disconnect the hub.
+    if (VoiceAssistant._isIOS() && navigator.bluetooth) {
+      return "Voice can't run in this iPhone browser — Apple only allows it in Safari, "
+        + "which can't do Bluetooth. Use the buttons here. (Voice works if you open this "
+        + "app on a computer with Chrome.)";
+    }
+    return null;
+  }
+
   constructor({ hub, onLog, onState } = {}) {
     this.hub = hub;
     this.onLog = onLog || (() => {});
     this.onState = onState || (() => {});
 
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    this.isSupported = !!SR;
+    // `blockedReason` is set when voice must NOT run here. Critically this
+    // includes Bluefy / any WebBLE browser on iOS: Apple only enables speech
+    // recognition in Safari (WebKit bug 239816), so webkitSpeechRecognition
+    // is *exposed* here but non-functional — and starting it grabs the mic,
+    // which tears down the Web Bluetooth connection to the hub. We must never
+    // even call recog.start() in that case.
+    this.blockedReason = VoiceAssistant._computeBlockedReason(SR);
+    this.isSupported = !this.blockedReason;
     this.running = false;
     this.enabled = true;
     this._speaking = false;
@@ -116,9 +144,10 @@ class VoiceAssistant {
   /** Must be called from a user tap (iOS requires a gesture to unlock the
    * mic and speech synthesis). */
   start() {
-    if (!this.isSupported) {
+    if (this.blockedReason) {
+      // Never touch the mic here — grabbing it would disconnect the hub.
       this.onState('unsupported');
-      this.onLog("Voice isn't available in this browser. On iPhone, Apple blocks it in Bluefy — use the on-screen buttons instead.");
+      this.onLog(this.blockedReason);
       return;
     }
     if (this.running) return;

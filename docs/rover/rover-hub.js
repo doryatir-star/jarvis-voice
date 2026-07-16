@@ -12,6 +12,8 @@ class RoverHub {
     this.device = null;
     this.characteristic = null;
     this._stopTimer = null;
+    this._userDisconnected = false;
+    this._reconnecting = false;
 
     this.clawPort = this._loadInt('clawPort', PORT.D);
     this.headPort = this._loadInt('headPort', PORT.C);
@@ -36,6 +38,7 @@ class RoverHub {
       return;
     }
     try {
+      this._userDisconnected = false;
       this.onStatus('connecting');
       this.log('Opening the Bluetooth device picker...');
       // Using acceptAllDevices instead of a services filter: some LEGO hub
@@ -49,18 +52,9 @@ class RoverHub {
         acceptAllDevices: true,
         optionalServices: [HUB_SERVICE_UUID],
       });
-      this.device.addEventListener('gattserverdisconnected', () => {
-        this.characteristic = null;
-        this.onStatus('disconnected');
-        this.log('Disconnected.');
-      });
+      this.device.addEventListener('gattserverdisconnected', () => this._onDisconnected());
       this.log(`Picked "${this.device.name || 'unnamed device'}". Connecting to it...`);
-      const server = await this.device.gatt.connect();
-      const service = await server.getPrimaryService(HUB_SERVICE_UUID);
-      this.characteristic = await service.getCharacteristic(HUB_CHARACTERISTIC_UUID);
-      await this.characteristic.startNotifications();
-      this.characteristic.addEventListener('characteristicvaluechanged', (e) => this._onNotify(e.target.value));
-      this.onStatus('connected', this.device.name || 'LEGO Hub');
+      await this._attachServer();
       this.log(`Connected to ${this.device.name || 'LEGO hub'}.`);
     } catch (err) {
       this.onStatus('disconnected', null, err.message);
@@ -68,7 +62,52 @@ class RoverHub {
     }
   }
 
+  /** Connect GATT and wire up the characteristic. Shared by first connect
+   * and auto-reconnect. Assumes this.device is already set. */
+  async _attachServer() {
+    const server = await this.device.gatt.connect();
+    const service = await server.getPrimaryService(HUB_SERVICE_UUID);
+    this.characteristic = await service.getCharacteristic(HUB_CHARACTERISTIC_UUID);
+    await this.characteristic.startNotifications();
+    this.characteristic.addEventListener('characteristicvaluechanged', (e) => this._onNotify(e.target.value));
+    this.onStatus('connected', this.device.name || 'LEGO Hub');
+  }
+
+  _onDisconnected() {
+    this.characteristic = null;
+    this.onStatus('disconnected');
+    this.log('Disconnected.');
+    if (!this._userDisconnected) {
+      this._reconnect();
+    }
+  }
+
+  /** Try to silently reconnect to the same hub (no device picker) after an
+   * unexpected drop. iOS may require a fresh user gesture, in which case we
+   * give up gracefully and tell the user to tap Connect. */
+  async _reconnect() {
+    if (this._reconnecting || !this.device) return;
+    this._reconnecting = true;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (this._userDisconnected) break;
+      this.onStatus('connecting');
+      this.log(`Reconnecting to the hub… (attempt ${attempt} of 3)`);
+      try {
+        await this._attachServer();
+        this.log('Reconnected.');
+        this._reconnecting = false;
+        return;
+      } catch (err) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+    this._reconnecting = false;
+    this.onStatus('disconnected');
+    this.log("Couldn't reconnect automatically — tap Connect to reconnect.");
+  }
+
   disconnect() {
+    this._userDisconnected = true;
     if (this.device && this.device.gatt.connected) {
       this.device.gatt.disconnect();
     }

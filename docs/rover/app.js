@@ -171,9 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (!voice.isSupported) {
-    voiceStatusEl.textContent = 'Voice not supported in this browser';
+    voiceStatusEl.textContent = 'Voice not available here';
     voiceStatusEl.className = 'status disconnected';
-    voiceLog("Voice isn't available here. On iPhone, Apple blocks speech recognition in Bluefy — use the Controller buttons instead.");
+    voiceLog(voice.blockedReason || "Voice isn't available in this browser — use the Controller buttons instead.");
+    voiceBtn.disabled = true;
+    voiceBtn.textContent = '🎤 Voice not available';
   }
 
   voiceBtn.addEventListener('click', () => voice.start());
