@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LEGO Robotic Arm Guide</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Robotic Arm Builder</h1>
+    <div class="status disconnected">Powered Up Technic Large Hub · 88016</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="guide">Guide</button>
+    <button class="tab-btn" data-tab="wiring">Wiring</button>
+    <button class="tab-btn" data-tab="test">Test</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+  </nav>
+
+  <main>
+    <section id="tab-guide" class="tab-panel active">
+      <h2>What you're building</h2>
+      <p class="hint">
+        A simple 2-motor robotic arm: one motor rotates the whole arm left/right
+        at the base, the second motor lifts the arm up/down at the shoulder.
+        The hub is the LEGO Powered Up <strong>Technic Large Hub, element
+        88016</strong> — a 6-port, rechargeable, Bluetooth LE hub (the same
+        hub used in SPIKE Prime / Mindstorms Robot Inventor sets).
+      </p>
+
+      <h2>Parts checklist</h2>
+      <ul class="checklist" id="partsChecklist">
+        <li><label><input type="checkbox" data-key="part-hub"> Technic Large Hub (88016) + its USB-C charging cable</label></li>
+        <li><label><input type="checkbox" data-key="part-motor1"> Powered Up motor #1 (base rotation)</label></li>
+        <li><label><input type="checkbox" data-key="part-motor2"> Powered Up motor #2 (shoulder lift)</label></li>
+        <li><label><input type="checkbox" data-key="part-cables"> Both motors' connector cables reach the hub with slack to spare</label></li>
+        <li><label><input type="checkbox" data-key="part-beams"> Technic beams / liftarms / pins / axles for the arm and base</label></li>
+        <li><label><input type="checkbox" data-key="part-plate"> A flat base plate or Technic frame to mount everything on</label></li>
+      </ul>
+      <p class="hint">
+        This app can't tell your exact motor/sensor models apart from a
+        photo, so it treats both as generic Powered Up motors — any Powered
+        Up motor works in any of the hub's 6 ports.
+      </p>
+
+      <h2>Build steps</h2>
+      <ol class="steps">
+        <li>
+          <strong>Base.</strong> Mount motor #1 so its output shaft is
+          vertical and becomes the arm's rotation axis — the simplest base
+          is the arm platform attached directly to that shaft, with the
+          motor's housing fixed to a stationary bottom plate. (If you have a
+          geared Technic turntable ring, you can use that instead and gear
+          the motor into it — sturdier, but not required to get started.)
+        </li>
+        <li>
+          <strong>Shoulder.</strong> Mount motor #2 on top of the rotating
+          base platform, with its output shaft horizontal, so it lifts the
+          arm segment up and down. Keep the arm's weight as close to this
+          pivot as you can — Powered Up motors don't strongly hold position
+          against gravity on their own, so a heavy, far-reaching arm will
+          slowly sag. A counterweight opposite the pivot, or keeping the arm
+          short at first, both help.
+        </li>
+        <li>
+          <strong>Arm + end effector.</strong> Build the arm segment out
+          from the shoulder motor. With only 2 motors there's none left for
+          a powered gripper, so end it in a fixed hook, scoop, or a simple
+          spring/friction claw that grabs by the arm's own motion.
+        </li>
+        <li>
+          <strong>Mount the hub.</strong> Fix the 88016 hub to the
+          non-rotating base (not the rotating platform) if possible, so its
+          cables don't have to twist. If the hub has to sit on the rotating
+          part, route both cables with generous slack and check the Wiring
+          tab's note on cable travel before tightening anything down.
+        </li>
+        <li>
+          <strong>Power up.</strong> Charge the hub fully over USB-C first
+          (LEGO ships these hubs at a partial charge). Press the hub's
+          center button to turn it on — its light ring shows charge/status.
+        </li>
+        <li>
+          <strong>Test it.</strong> Open the <em>Test</em> tab, connect over
+          Bluetooth, and use the Nudge buttons to confirm which port is the
+          base and which is the shoulder before you button up the build —
+          it's much easier to re-plug a cable now than after everything's
+          screwed down.
+        </li>
+      </ol>
+    </section>
+
+    <section id="tab-wiring" class="tab-panel">
+      <h2>Port assignment</h2>
+      <table class="wiring-table">
+        <thead><tr><th>Port</th><th>Motor</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td>Base rotation</td></tr>
+          <tr><td>B</td><td>Shoulder lift</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">
+        This is just the default — if you plug them in the other way
+        around, don't re-wire anything: swap Base/Shoulder port in the
+        <em>Settings</em> tab instead and everything else keeps working.
+      </p>
+
+      <h2>Cable routing</h2>
+      <p class="hint">
+        The Large Hub has 6 ports total (A–F) around its edges, but this arm
+        only needs two of them. Whichever two you use, leave enough slack in
+        both cables for the base's full rotation range before you lock the
+        arm's beams in place — a taut cable will yank the hub off its mount
+        or stall the base motor mid-turn.
+      </p>
+
+      <h2>Powering on</h2>
+      <p class="hint">
+        Charge the hub fully via its USB-C port before first use. Press the
+        center button once to power on. If the Test tab can't find it, make
+        sure it's on and awake (press the button again) and within
+        Bluetooth range.
+      </p>
+    </section>
+
+    <section id="tab-test" class="tab-panel">
+      <p class="hint">
+        On iPhone, open this page in the <strong>Bluefy</strong> browser app
+        (install it from the App Store) — Safari blocks Web Bluetooth
+        entirely, so this won't work there. On desktop, use Chrome or Edge.
+      </p>
+      <div id="status" class="status disconnected">Not connected</div>
+      <button id="connectBtn" class="brick blue">Scan &amp; Connect</button>
+      <button id="disconnectBtn" class="brick red" hidden>Disconnect</button>
+      <p id="connectError" class="warning" hidden></p>
+
+      <h2>Base</h2>
+      <div class="row">
+        <button id="baseLeftBtn" class="brick blue">&#9664; Left</button>
+        <button id="baseStopBtn" class="brick red">&#9632; Stop</button>
+        <button id="baseRightBtn" class="brick blue">Right &#9654;</button>
+      </div>
+
+      <h2>Shoulder</h2>
+      <div class="row">
+        <button id="shoulderUpBtn" class="brick green">&#9650; Up</button>
+        <button id="shoulderStopBtn" class="brick red">&#9632; Stop</button>
+        <button id="shoulderDownBtn" class="brick green">&#9660; Down</button>
+      </div>
+
+      <h2>Port test</h2>
+      <div class="row">
+        <button id="nudgeABtn" class="brick gray">Nudge Port A</button>
+        <button id="nudgeBBtn" class="brick gray">Nudge Port B</button>
+      </div>
+      <p class="hint">Watch which motor moves, then set Base/Shoulder port in Settings if they're swapped.</p>
+
+      <div id="log" class="log" aria-live="polite"></div>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <label>Base port
+        <select id="basePortSel">
+          <option value="0">A</option>
+          <option value="1">B</option>
+          <option value="2">C</option>
+          <option value="3">D</option>
+          <option value="4">E</option>
+          <option value="5">F</option>
+        </select>
+      </label>
+      <label>Shoulder port
+        <select id="shoulderPortSel">
+          <option value="0">A</option>
+          <option value="1">B</option>
+          <option value="2">C</option>
+          <option value="3">D</option>
+          <option value="4">E</option>
+          <option value="5">F</option>
+        </select>
+      </label>
+      <p id="portWarning" class="warning" hidden>Base and shoulder are set to the same port — fix this before testing.</p>
+      <label>Motor speed (%)
+        <input id="speedInput" type="number" min="10" max="100" step="10">
+      </label>
+      <label>Move duration (seconds)
+        <input id="moveSecInput" type="number" min="0.3" max="5" step="0.1">
+      </label>
+    </section>
+  </main>
+
+  <script src="lwp3.js"></script>
+  <script src="arm-hub.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
