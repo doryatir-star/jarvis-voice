@@ -85,12 +85,19 @@
 
     <section id="tab-test" class="tab-panel">
       <p class="hint">
-        On iPhone, open this page in the <strong>Bluefy</strong> browser app
-        (install it from the App Store) — Safari blocks Web Bluetooth
-        entirely, so this won't work there. On desktop, use Chrome or Edge.
+        Two ways to connect. <strong>🔌 USB cable</strong> is the most
+        reliable for this hub: plug the hub into a <strong>computer</strong>
+        with its USB cable and open this page in Chrome or Edge there.
+        <strong>🔵 Bluetooth</strong> may not pair on the 88016 hub (its
+        firmware speaks a different Bluetooth language than this app) — if
+        it "does not want", use the cable. On iPhone, Bluetooth needs the
+        <strong>Bluefy</strong> app; USB doesn't work on phones at all.
       </p>
       <div id="status" class="status disconnected">Not connected</div>
-      <button id="connectBtn" class="brick blue">Scan &amp; Connect</button>
+      <div class="row">
+        <button id="usbConnectBtn" class="brick green">🔌 USB cable</button>
+        <button id="connectBtn" class="brick blue">🔵 Bluetooth</button>
+      </div>
       <button id="disconnectBtn" class="brick red" hidden>Disconnect</button>
       <p id="connectError" class="warning" hidden></p>
 
@@ -169,6 +176,7 @@
 
   <script src="lwp3.js"></script>
   <script src="arm-hub.js"></script>
+  <script src="usb-hub.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -29,11 +29,20 @@ the repo's Settings > Pages (source: deploy from a branch, folder:
 2. **Wiring tab**: which port each motor goes into (A = base, B = shoulder,
    C = gripper by default — swap these in Settings if you wire them
    differently), plus notes on cable slack and powering on the hub.
-3. **Test tab**: once the arm is wired up, connect over Bluetooth and use
-   the Base/Shoulder/Gripper buttons to jog each motor, or the Nudge
-   buttons to figure out which port is which before you finish the build.
-   On iPhone, open this page in the **Bluefy** app (Safari blocks Web
-   Bluetooth entirely); on desktop use Chrome or Edge.
+3. **Test tab**: once the arm is wired up, connect and use the
+   Base/Shoulder/Gripper buttons to jog each motor, or the Nudge buttons to
+   figure out which port is which before you finish the build. Two ways to
+   connect:
+   - **USB cable (recommended for this hub)**: plug the hub into a
+     computer and open this page in Chrome/Edge there. Uses the Web Serial
+     API to talk to the hub's MicroPython REPL — works regardless of
+     firmware generation (MINDSTORMS/SPIKE 2 and SPIKE 3 APIs both
+     handled).
+   - **Bluetooth**: may not pair on the 88016 — its stock SPIKE-family
+     firmware doesn't expose the LWP3 GATT service this app's Bluetooth
+     backend speaks (that protocol is for BOOST/City/Technic Powered Up
+     hubs). Kept for hubs where it does work; on iPhone it needs the
+     **Bluefy** app.
 4. **Settings tab**: which port is base vs. shoulder vs. gripper, motor
    speed, and how long a tap moves before auto-stopping. Saved on your
    device between visits.

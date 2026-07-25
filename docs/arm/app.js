@@ -190,7 +190,7 @@ const BUILD_STEPS = (() => {
       ),
     },
     {
-      caption: 'Built! Now tap “Try it!” to connect over Bluetooth and drive your arm — and use Nudge A/B/C to check each motor landed on the right port.',
+      caption: 'Built! Tap “Try it!” to connect and drive your arm — USB cable to a computer is the most reliable way. Use Nudge A/B/C to check each motor landed on the right port.',
       svg: svg(
         FULL +
         '<g fill="#ffd500"><path d="M60 60 l6 14 14 2 -10 10 3 15 -13 -8 -13 8 3 -15 -10 -10 14 -2 z"/>' +
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusEl = document.getElementById('status');
   const logEl = document.getElementById('log');
 
-  const hub = new ArmHub({
+  const callbacks = {
     onLog: (line) => {
       const div = document.createElement('div');
       div.textContent = line;
@@ -232,7 +232,37 @@ document.addEventListener('DOMContentLoaded', () => {
         errorEl.hidden = true;
       }
     },
-  });
+  };
+
+  const btHub = new ArmHub(callbacks);
+  const usbHub = new UsbArmHub(callbacks);
+
+  // Facade: the Test-tab buttons drive whichever backend is connected
+  // (USB wins if somehow both are). Falls back to Bluetooth so "not
+  // connected" messages still appear in the log.
+  const hub = {
+    get active() {
+      return usbHub.isConnected ? usbHub : btHub;
+    },
+    moveBase(d) { this.active.moveBase(d); },
+    moveShoulder(d) { this.active.moveShoulder(d); },
+    moveGripper(a) { this.active.moveGripper(a); },
+    stopAll() { this.active.stopAll(); },
+    nudge(p) { this.active.nudge(p); },
+    log(line) { callbacks.onLog(line); },
+    // Settings setters live on the Bluetooth backend, which persists them
+    // to localStorage; the USB backend reads the same keys live.
+    setBasePort(p) { btHub.setBasePort(p); },
+    setShoulderPort(p) { btHub.setShoulderPort(p); },
+    setGripperPort(p) { btHub.setGripperPort(p); },
+    setSpeed(v) { btHub.setSpeed(v); },
+    setMoveSeconds(v) { btHub.setMoveSeconds(v); },
+    get basePort() { return btHub.basePort; },
+    get shoulderPort() { return btHub.shoulderPort; },
+    get gripperPort() { return btHub.gripperPort; },
+    get speed() { return btHub.speed; },
+    get moveSeconds() { return btHub.moveSeconds; },
+  };
 
   // --- Tabs ---
   function switchTab(name) {
@@ -308,8 +338,18 @@ document.addEventListener('DOMContentLoaded', () => {
   showStep(stepIndex);
 
   // --- Test tab: connect ---
-  document.getElementById('connectBtn').addEventListener('click', () => hub.connect());
-  document.getElementById('disconnectBtn').addEventListener('click', () => hub.disconnect());
+  document.getElementById('connectBtn').addEventListener('click', () => {
+    if (usbHub.isConnected) usbHub.disconnect();
+    btHub.connect();
+  });
+  document.getElementById('usbConnectBtn').addEventListener('click', () => {
+    if (btHub.isConnected) btHub.disconnect();
+    usbHub.connect();
+  });
+  document.getElementById('disconnectBtn').addEventListener('click', () => {
+    if (usbHub.isConnected) usbHub.disconnect();
+    if (btHub.isConnected) btHub.disconnect();
+  });
 
   // --- Test tab: base/shoulder/nudge ---
   document.getElementById('baseLeftBtn').addEventListener('click', () => hub.moveBase('left'));
