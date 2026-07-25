@@ -10,6 +10,10 @@
 
 * { box-sizing: border-box; }
 
+/* The UA's [hidden] rule loses to any author display rule (e.g. .row's
+ * flex), so restate it with priority. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -126,6 +130,68 @@ h2 {
   white-space: pre-wrap;
   word-break: break-all;
   margin-top: 16px;
+}
+
+/* LEGO-instructions-style step pager */
+.step-progress {
+  height: 6px;
+  background: var(--panel);
+  border-radius: 3px;
+  margin: 10px 0 6px;
+  overflow: hidden;
+}
+
+#stepProgressFill {
+  height: 100%;
+  width: 0;
+  background: var(--lego-yellow);
+  border-radius: 3px;
+  transition: width 0.25s ease;
+}
+
+.step-counter {
+  text-align: center;
+  color: var(--lego-yellow);
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin: 4px 0 8px;
+}
+
+.step-viewport {
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.step-viewport svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 52vh;
+}
+
+.step-caption {
+  color: #e8e8e8;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  text-align: center;
+  min-height: 3.6em;
+  margin: 10px 0;
+}
+
+.pager {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.pager-btn {
+  min-height: 62px;
+  font-size: 1.5rem;
+}
+
+.pager-btn:disabled {
+  opacity: 0.35;
 }
 
 .checklist, .steps {

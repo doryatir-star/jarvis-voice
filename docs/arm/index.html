@@ -21,83 +21,32 @@
 
   <main>
     <section id="tab-guide" class="tab-panel active">
-      <h2>What you're building</h2>
-      <p class="hint">
-        A 3-motor robotic arm: one motor rotates the whole arm left/right at
-        the base, the second lifts the arm up/down at the shoulder, and the
-        third opens/closes a gripper at the end. The hub is the LEGO Powered
-        Up <strong>Technic Large Hub, element 88016</strong> — a 6-port,
-        rechargeable, Bluetooth LE hub (the same hub used in SPIKE Prime /
-        Mindstorms Robot Inventor sets).
-      </p>
+      <div class="step-progress"><div id="stepProgressFill"></div></div>
+      <div id="stepCounter" class="step-counter">Step 1</div>
+      <div id="stepViewport" class="step-viewport"></div>
+      <p id="stepCaption" class="step-caption"></p>
 
-      <h2>Parts checklist</h2>
-      <ul class="checklist" id="partsChecklist">
-        <li><label><input type="checkbox" data-key="part-hub"> Technic Large Hub (88016) + its USB-C charging cable</label></li>
-        <li><label><input type="checkbox" data-key="part-motor1"> Powered Up motor #1 (base rotation)</label></li>
-        <li><label><input type="checkbox" data-key="part-motor2"> Powered Up motor #2 (shoulder lift)</label></li>
-        <li><label><input type="checkbox" data-key="part-motor3"> Powered Up motor #3 (gripper)</label></li>
-        <li><label><input type="checkbox" data-key="part-cables"> All three motors' connector cables reach the hub with slack to spare</label></li>
-        <li><label><input type="checkbox" data-key="part-beams"> Technic beams / liftarms / pins / axles for the arm and base</label></li>
-        <li><label><input type="checkbox" data-key="part-plate"> A flat base plate or Technic frame to mount everything on</label></li>
-      </ul>
-      <p class="hint">
-        This app can't tell your exact motor/sensor models apart from a
-        photo, so it treats both as generic Powered Up motors — any Powered
-        Up motor works in any of the hub's 6 ports.
-      </p>
+      <div id="partsChecklistWrap" hidden>
+        <ul class="checklist" id="partsChecklist">
+          <li><label><input type="checkbox" data-key="part-hub"> Technic Large Hub (88016) + USB-C cable</label></li>
+          <li><label><input type="checkbox" data-key="part-motor1"> Motor #1 (base rotation)</label></li>
+          <li><label><input type="checkbox" data-key="part-motor2"> Motor #2 (shoulder lift)</label></li>
+          <li><label><input type="checkbox" data-key="part-motor3"> Motor #3 (gripper)</label></li>
+          <li><label><input type="checkbox" data-key="part-cables"> Motor cables that reach the hub with slack</label></li>
+          <li><label><input type="checkbox" data-key="part-beams"> Technic beams / pins / axles / gears</label></li>
+          <li><label><input type="checkbox" data-key="part-plate"> A flat base plate or frame</label></li>
+        </ul>
+      </div>
 
-      <h2>Build steps</h2>
-      <ol class="steps">
-        <li>
-          <strong>Base.</strong> Mount motor #1 so its output shaft is
-          vertical and becomes the arm's rotation axis — the simplest base
-          is the arm platform attached directly to that shaft, with the
-          motor's housing fixed to a stationary bottom plate. (If you have a
-          geared Technic turntable ring, you can use that instead and gear
-          the motor into it — sturdier, but not required to get started.)
-        </li>
-        <li>
-          <strong>Shoulder.</strong> Mount motor #2 on top of the rotating
-          base platform, with its output shaft horizontal, so it lifts the
-          arm segment up and down. Keep the arm's weight as close to this
-          pivot as you can — Powered Up motors don't strongly hold position
-          against gravity on their own, so a heavy, far-reaching arm will
-          slowly sag. A counterweight opposite the pivot, or keeping the arm
-          short at first, both help.
-        </li>
-        <li>
-          <strong>Arm + gripper.</strong> Build the arm segment out from the
-          shoulder motor, and mount motor #3 at its end to drive the
-          gripper. The simplest gripper is two jaws on gears: put a small
-          gear on the motor's shaft meshing with a gear on each jaw (or one
-          driven jaw closing against a fixed jaw). Keep the gripper light —
-          it hangs at the end of the arm, where weight matters most for
-          sagging. If gears are fiddly, start with a fixed hook and add the
-          powered gripper once the base and shoulder work.
-        </li>
-        <li>
-          <strong>Mount the hub.</strong> Fix the 88016 hub to the
-          non-rotating base (not the rotating platform) if possible, so its
-          cables don't have to twist. If the hub has to sit on the rotating
-          part, route all three cables with generous slack — the gripper
-          cable especially has to travel the arm's full reach — and check
-          the Wiring tab's note on cable travel before tightening anything
-          down.
-        </li>
-        <li>
-          <strong>Power up.</strong> Charge the hub fully over USB-C first
-          (LEGO ships these hubs at a partial charge). Press the hub's
-          center button to turn it on — its light ring shows charge/status.
-        </li>
-        <li>
-          <strong>Test it.</strong> Open the <em>Test</em> tab, connect over
-          Bluetooth, and use the Nudge buttons to confirm which port is the
-          base and which is the shoulder before you button up the build —
-          it's much easier to re-plug a cable now than after everything's
-          screwed down.
-        </li>
-      </ol>
+      <div id="stepDoneRow" class="row" hidden>
+        <button id="goTestBtn" class="brick green">Try it! &#9654;</button>
+        <button id="goWiringBtn" class="brick yellow">Wiring</button>
+      </div>
+
+      <div class="pager">
+        <button id="prevStepBtn" class="brick blue pager-btn">&#9664;</button>
+        <button id="nextStepBtn" class="brick green pager-btn">&#9654;</button>
+      </div>
     </section>
 
     <section id="tab-wiring" class="tab-panel">
