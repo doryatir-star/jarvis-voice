@@ -21,9 +21,11 @@ the repo's Settings > Pages (source: deploy from a branch, folder:
 
 ## Using it
 
-1. **Guide tab**: the parts checklist and build steps for the arm. Checkbox
-   state is saved on your device (`localStorage`) so it's still checked off
-   next time you open the page.
+1. **Guide tab**: LEGO-instructions-style build steps — one picture per
+   page, tap ▶/◀ (or swipe, or use arrow keys) to page through the build
+   like the official LEGO BOOST app. Your current step and the parts
+   checklist are saved on your device (`localStorage`), so the guide
+   reopens right where you left off.
 2. **Wiring tab**: which port each motor goes into (A = base, B = shoulder,
    C = gripper by default — swap these in Settings if you wire them
    differently), plus notes on cable slack and powering on the hub.
