@@ -191,9 +191,27 @@
     border: 1px solid rgba(56,232,255,.3);
   }
   .badge.warn { background: rgba(255,170,60,.12); color: #ffc878; border-color: rgba(255,170,60,.35); }
+
+  /* Links to the LEGO companion apps hosted alongside this page — kept as a
+   * fixed footer so they're tappable from the site root without typing URLs. */
+  #appnav {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    display: flex; justify-content: center; gap: 18px;
+    font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;
+    z-index: 5;
+  }
+  #appnav a { color: var(--dim); text-decoration: none; padding: 6px 10px; }
+  #appnav a:hover { color: var(--cyan); }
 </style>
 </head>
 <body>
+
+<nav id="appnav">
+  <a href="rover/">🤖 Rover</a>
+  <a href="arm/">🦾 Arm Guide</a>
+</nav>
 
 <div id="stage">
   <h1>J · A · R · V · I · S</h1>
