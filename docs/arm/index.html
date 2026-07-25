@@ -23,11 +23,12 @@
     <section id="tab-guide" class="tab-panel active">
       <h2>What you're building</h2>
       <p class="hint">
-        A simple 2-motor robotic arm: one motor rotates the whole arm left/right
-        at the base, the second motor lifts the arm up/down at the shoulder.
-        The hub is the LEGO Powered Up <strong>Technic Large Hub, element
-        88016</strong> — a 6-port, rechargeable, Bluetooth LE hub (the same
-        hub used in SPIKE Prime / Mindstorms Robot Inventor sets).
+        A 3-motor robotic arm: one motor rotates the whole arm left/right at
+        the base, the second lifts the arm up/down at the shoulder, and the
+        third opens/closes a gripper at the end. The hub is the LEGO Powered
+        Up <strong>Technic Large Hub, element 88016</strong> — a 6-port,
+        rechargeable, Bluetooth LE hub (the same hub used in SPIKE Prime /
+        Mindstorms Robot Inventor sets).
       </p>
 
       <h2>Parts checklist</h2>
@@ -35,7 +36,8 @@
         <li><label><input type="checkbox" data-key="part-hub"> Technic Large Hub (88016) + its USB-C charging cable</label></li>
         <li><label><input type="checkbox" data-key="part-motor1"> Powered Up motor #1 (base rotation)</label></li>
         <li><label><input type="checkbox" data-key="part-motor2"> Powered Up motor #2 (shoulder lift)</label></li>
-        <li><label><input type="checkbox" data-key="part-cables"> Both motors' connector cables reach the hub with slack to spare</label></li>
+        <li><label><input type="checkbox" data-key="part-motor3"> Powered Up motor #3 (gripper)</label></li>
+        <li><label><input type="checkbox" data-key="part-cables"> All three motors' connector cables reach the hub with slack to spare</label></li>
         <li><label><input type="checkbox" data-key="part-beams"> Technic beams / liftarms / pins / axles for the arm and base</label></li>
         <li><label><input type="checkbox" data-key="part-plate"> A flat base plate or Technic frame to mount everything on</label></li>
       </ul>
@@ -65,17 +67,23 @@
           short at first, both help.
         </li>
         <li>
-          <strong>Arm + end effector.</strong> Build the arm segment out
-          from the shoulder motor. With only 2 motors there's none left for
-          a powered gripper, so end it in a fixed hook, scoop, or a simple
-          spring/friction claw that grabs by the arm's own motion.
+          <strong>Arm + gripper.</strong> Build the arm segment out from the
+          shoulder motor, and mount motor #3 at its end to drive the
+          gripper. The simplest gripper is two jaws on gears: put a small
+          gear on the motor's shaft meshing with a gear on each jaw (or one
+          driven jaw closing against a fixed jaw). Keep the gripper light —
+          it hangs at the end of the arm, where weight matters most for
+          sagging. If gears are fiddly, start with a fixed hook and add the
+          powered gripper once the base and shoulder work.
         </li>
         <li>
           <strong>Mount the hub.</strong> Fix the 88016 hub to the
           non-rotating base (not the rotating platform) if possible, so its
           cables don't have to twist. If the hub has to sit on the rotating
-          part, route both cables with generous slack and check the Wiring
-          tab's note on cable travel before tightening anything down.
+          part, route all three cables with generous slack — the gripper
+          cable especially has to travel the arm's full reach — and check
+          the Wiring tab's note on cable travel before tightening anything
+          down.
         </li>
         <li>
           <strong>Power up.</strong> Charge the hub fully over USB-C first
@@ -99,6 +107,7 @@
         <tbody>
           <tr><td>A</td><td>Base rotation</td></tr>
           <tr><td>B</td><td>Shoulder lift</td></tr>
+          <tr><td>C</td><td>Gripper</td></tr>
         </tbody>
       </table>
       <p class="hint">
@@ -110,10 +119,10 @@
       <h2>Cable routing</h2>
       <p class="hint">
         The Large Hub has 6 ports total (A–F) around its edges, but this arm
-        only needs two of them. Whichever two you use, leave enough slack in
-        both cables for the base's full rotation range before you lock the
-        arm's beams in place — a taut cable will yank the hub off its mount
-        or stall the base motor mid-turn.
+        only needs three of them. Whichever three you use, leave enough
+        slack in every cable for the base's full rotation range and the
+        arm's full lift range before you lock the beams in place — a taut
+        cable will yank the hub off its mount or stall a motor mid-move.
       </p>
 
       <h2>Powering on</h2>
@@ -150,12 +159,20 @@
         <button id="shoulderDownBtn" class="brick green">&#9660; Down</button>
       </div>
 
+      <h2>Gripper</h2>
+      <div class="row">
+        <button id="gripperOpenBtn" class="brick yellow">Open</button>
+        <button id="gripperStopBtn" class="brick red">&#9632; Stop</button>
+        <button id="gripperCloseBtn" class="brick yellow">Close</button>
+      </div>
+
       <h2>Port test</h2>
       <div class="row">
         <button id="nudgeABtn" class="brick gray">Nudge Port A</button>
         <button id="nudgeBBtn" class="brick gray">Nudge Port B</button>
+        <button id="nudgeCBtn" class="brick gray">Nudge Port C</button>
       </div>
-      <p class="hint">Watch which motor moves, then set Base/Shoulder port in Settings if they're swapped.</p>
+      <p class="hint">Watch which motor moves, then set Base/Shoulder/Gripper port in Settings if they're swapped.</p>
 
       <div id="log" class="log" aria-live="polite"></div>
     </section>
@@ -181,7 +198,17 @@
           <option value="5">F</option>
         </select>
       </label>
-      <p id="portWarning" class="warning" hidden>Base and shoulder are set to the same port — fix this before testing.</p>
+      <label>Gripper port
+        <select id="gripperPortSel">
+          <option value="0">A</option>
+          <option value="1">B</option>
+          <option value="2">C</option>
+          <option value="3">D</option>
+          <option value="4">E</option>
+          <option value="5">F</option>
+        </select>
+      </label>
+      <p id="portWarning" class="warning" hidden>Two motors are set to the same port — fix this before testing.</p>
       <label>Motor speed (%)
         <input id="speedInput" type="number" min="10" max="100" step="10">
       </label>

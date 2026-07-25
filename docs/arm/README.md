@@ -1,7 +1,7 @@
 # LEGO Robotic Arm — build guide + wiring tester
 
-A step-by-step guide for building a simple 2-motor robotic arm (base
-rotation + shoulder lift) around the LEGO Powered Up **Technic Large Hub,
+A step-by-step guide for building a 3-motor robotic arm (base rotation +
+shoulder lift + gripper) around the LEGO Powered Up **Technic Large Hub,
 element 88016**, plus a small phone-usable page to test the wiring over
 Bluetooth once it's built. Follows the same no-build-step, plain
 HTML/CSS/JS convention as `docs/rover/` in this repo.
@@ -24,17 +24,17 @@ the repo's Settings > Pages (source: deploy from a branch, folder:
 1. **Guide tab**: the parts checklist and build steps for the arm. Checkbox
    state is saved on your device (`localStorage`) so it's still checked off
    next time you open the page.
-2. **Wiring tab**: which port each motor goes into (A = base, B = shoulder
-   by default — swap this in Settings if you wire them the other way), plus
-   notes on cable slack and powering on the hub.
+2. **Wiring tab**: which port each motor goes into (A = base, B = shoulder,
+   C = gripper by default — swap these in Settings if you wire them
+   differently), plus notes on cable slack and powering on the hub.
 3. **Test tab**: once the arm is wired up, connect over Bluetooth and use
-   the Base/Shoulder buttons to jog each motor, or the Nudge buttons to
-   figure out which port is which before you finish the build. On iPhone,
-   open this page in the **Bluefy** app (Safari blocks Web Bluetooth
-   entirely); on desktop use Chrome or Edge.
-4. **Settings tab**: which port is base vs. shoulder, motor speed, and how
-   long a tap moves before auto-stopping. Saved on your device between
-   visits.
+   the Base/Shoulder/Gripper buttons to jog each motor, or the Nudge
+   buttons to figure out which port is which before you finish the build.
+   On iPhone, open this page in the **Bluefy** app (Safari blocks Web
+   Bluetooth entirely); on desktop use Chrome or Edge.
+4. **Settings tab**: which port is base vs. shoulder vs. gripper, motor
+   speed, and how long a tap moves before auto-stopping. Saved on your
+   device between visits.
 
 ## Notes
 
@@ -42,7 +42,7 @@ the repo's Settings > Pages (source: deploy from a branch, folder:
   firmware flashing. The connection code (`arm-hub.js`) is hub-agnostic
   (generic LEGO Wireless Protocol service UUID, `acceptAllDevices: true`),
   so it works against the 88016 hub without modification.
-- This app only assumes 2 motors (base + shoulder). If you add more motors
-  later (e.g. an elbow or a powered gripper), the hub has 6 ports total
-  (A–F) — `lwp3.js` already defines all six, this app's UI just doesn't
-  expose the extra ones yet.
+- This app assumes 3 motors (base + shoulder + gripper). If you add more
+  motors later (e.g. an elbow or wrist), the hub has 6 ports total (A–F) —
+  `lwp3.js` already defines all six, this app's UI just doesn't expose the
+  extra ones yet.
