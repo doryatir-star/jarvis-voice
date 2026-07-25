@@ -1,8 +1,9 @@
 // Owns the Web Bluetooth connection to the LEGO Powered Up Technic Large
-// Hub (88016) and exposes plain high-level methods for the arm's two
-// motors (base rotation + shoulder lift). Adapted from
+// Hub (88016) and exposes plain high-level methods for the arm's three
+// motors (base rotation + shoulder lift + gripper). Adapted from
 // docs/rover/rover-hub.js — same connection/reconnect/notify plumbing,
-// different high-level API (moveBase/moveShoulder instead of drive/turn).
+// different high-level API (moveBase/moveShoulder/moveGripper instead of
+// drive/turn/claw).
 //
 // Web Bluetooth does not work in Safari on iPhone — use the Bluefy browser
 // app instead. See README.md.
@@ -18,6 +19,7 @@ class ArmHub {
 
     this.basePort = this._loadInt('armBasePort', PORT.A);
     this.shoulderPort = this._loadInt('armShoulderPort', PORT.B);
+    this.gripperPort = this._loadInt('armGripperPort', PORT.C);
     this.speed = this._loadInt('armSpeed', 50);
     this.moveSeconds = this._loadFloat('armMoveSeconds', 1.0);
   }
@@ -130,10 +132,23 @@ class ArmHub {
     this.log('Shoulder -> ' + direction);
   }
 
+  /** Open/close the gripper for `moveSeconds`, then auto-stop. Power-based
+   * jog like the other axes, so it works with any Powered Up motor and any
+   * gripper mechanism — closing stalls gently against the object, and the
+   * auto-stop keeps a stall from running forever. */
+  moveGripper(action) {
+    clearTimeout(this._stopTimer);
+    const sign = action === 'open' ? -1 : 1;
+    this._sendPower(this.gripperPort, this.speed * sign);
+    this._scheduleAutoStop();
+    this.log('Gripper -> ' + action);
+  }
+
   stopAll() {
     clearTimeout(this._stopTimer);
     this._sendPower(this.basePort, 0);
     this._sendPower(this.shoulderPort, 0);
+    this._sendPower(this.gripperPort, 0);
     this.log('Stopping.');
   }
 
@@ -146,6 +161,7 @@ class ArmHub {
 
   setBasePort(port) { this.basePort = port; localStorage.setItem('armBasePort', String(port)); }
   setShoulderPort(port) { this.shoulderPort = port; localStorage.setItem('armShoulderPort', String(port)); }
+  setGripperPort(port) { this.gripperPort = port; localStorage.setItem('armGripperPort', String(port)); }
   setSpeed(v) { this.speed = v; localStorage.setItem('armSpeed', String(v)); }
   setMoveSeconds(v) { this.moveSeconds = v; localStorage.setItem('armMoveSeconds', String(v)); }
 

@@ -66,22 +66,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('shoulderUpBtn').addEventListener('click', () => hub.moveShoulder('up'));
   document.getElementById('shoulderDownBtn').addEventListener('click', () => hub.moveShoulder('down'));
   document.getElementById('shoulderStopBtn').addEventListener('click', () => hub.stopAll());
+  document.getElementById('gripperOpenBtn').addEventListener('click', () => hub.moveGripper('open'));
+  document.getElementById('gripperCloseBtn').addEventListener('click', () => hub.moveGripper('close'));
+  document.getElementById('gripperStopBtn').addEventListener('click', () => hub.stopAll());
   document.getElementById('nudgeABtn').addEventListener('click', () => hub.nudge(PORT.A));
   document.getElementById('nudgeBBtn').addEventListener('click', () => hub.nudge(PORT.B));
+  document.getElementById('nudgeCBtn').addEventListener('click', () => hub.nudge(PORT.C));
 
   // --- Settings tab ---
   const basePortSel = document.getElementById('basePortSel');
   const shoulderPortSel = document.getElementById('shoulderPortSel');
+  const gripperPortSel = document.getElementById('gripperPortSel');
   const portWarning = document.getElementById('portWarning');
   const speedInput = document.getElementById('speedInput');
   const moveSecInput = document.getElementById('moveSecInput');
 
   function refreshPortWarning() {
-    portWarning.hidden = basePortSel.value !== shoulderPortSel.value;
+    const ports = [basePortSel.value, shoulderPortSel.value, gripperPortSel.value];
+    portWarning.hidden = new Set(ports).size === ports.length;
   }
 
   basePortSel.value = String(hub.basePort);
   shoulderPortSel.value = String(hub.shoulderPort);
+  gripperPortSel.value = String(hub.gripperPort);
   speedInput.value = String(hub.speed);
   moveSecInput.value = String(hub.moveSeconds);
   refreshPortWarning();
@@ -92,6 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   shoulderPortSel.addEventListener('change', () => {
     hub.setShoulderPort(parseInt(shoulderPortSel.value, 10));
+    refreshPortWarning();
+  });
+  gripperPortSel.addEventListener('change', () => {
+    hub.setGripperPort(parseInt(gripperPortSel.value, 10));
     refreshPortWarning();
   });
   speedInput.addEventListener('change', () => hub.setSpeed(parseInt(speedInput.value, 10)));

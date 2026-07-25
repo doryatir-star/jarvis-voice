@@ -16,7 +16,7 @@ Grab the latest **`Jarvis.exe`** from the [Releases page](../../releases/latest)
 - **Smart Q&A without any API key** — DuckDuckGo + Wikipedia fallback
 - **Futuristic HUD** — arc-reactor animation, live audio level meter, microphone picker
 - **LEGO rover control (optional)** — drives a LEGO BOOST Move Hub robot over Bluetooth: "Jarvis, move forward / move backward / turn left / turn right / turn your head left / open the claw / stop the rover". See [Rover setup](#rover-setup-optional) below.
-- **LEGO robotic arm build guide (new!)** — a phone-friendly step-by-step guide for building a 2-motor robotic arm around the Powered Up Technic Large Hub (element **88016**), plus a Bluetooth wiring-tester page. See [`docs/arm/`](docs/arm/) — hosted at `https://doryatir-star.github.io/jarvis-voice/arm/` once GitHub Pages is enabled.
+- **LEGO robotic arm build guide (new!)** — a phone-friendly step-by-step guide for building a 3-motor robotic arm (base + shoulder + gripper) around the Powered Up Technic Large Hub (element **88016**), plus a Bluetooth wiring-tester page. See [`docs/arm/`](docs/arm/) — hosted at `https://doryatir-star.github.io/jarvis-voice/arm/`.
 
 ## Rover setup (optional)
 
