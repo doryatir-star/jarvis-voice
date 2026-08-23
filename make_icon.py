@@ -44,6 +44,8 @@ def main():
     images = [draw(s) for s in SIZES]
     images[0].save(OUT, format="ICO", sizes=[(s, s) for s in SIZES])
     print(f"Wrote {OUT}")
+    images[-1].save("jarvis.png", format="PNG")
+    print("Wrote jarvis.png")
 
 
 if __name__ == "__main__":

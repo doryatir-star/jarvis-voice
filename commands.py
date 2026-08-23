@@ -1,21 +1,33 @@
 import os
 import re
+import shlex
+import shutil
 import subprocess
+import sys
 import webbrowser
 import urllib.parse
 import urllib.request
 import json
 import ctypes
+import configparser
 import datetime
 import threading
 import difflib
 import random
 from pathlib import Path
 
+try:
+    import pyperclip
+except Exception:
+    pyperclip = None
+
+IS_WINDOWS = sys.platform.startswith("win")
+IS_LINUX = sys.platform.startswith("linux")
+
 
 # ---------- Static command maps (always available, instant) ----------
 
-APP_PATHS = {
+_APP_PATHS_WINDOWS = {
     "notepad": "notepad.exe",
     "calculator": "calc.exe",
     "calc": "calc.exe",
@@ -45,6 +57,47 @@ APP_PATHS = {
     "edge": "msedge.exe",
     "microsoft edge": "msedge.exe",
 }
+
+_APP_PATHS_LINUX = {
+    "notepad": ["gedit", "gnome-text-editor", "kate", "xed", "mousepad", "leafpad"],
+    "text editor": ["gedit", "gnome-text-editor", "kate", "xed", "mousepad"],
+    "wordpad": ["gedit", "gnome-text-editor", "kate", "xed", "mousepad"],
+    "calculator": ["gnome-calculator", "kcalc", "galculator"],
+    "calc": ["gnome-calculator", "kcalc", "galculator"],
+    "paint": ["gimp", "kolourpaint", "pinta"],
+    "explorer": ["nautilus", "dolphin", "nemo", "pcmanfm", "thunar"],
+    "file explorer": ["nautilus", "dolphin", "nemo", "pcmanfm", "thunar"],
+    "files": ["nautilus", "dolphin", "nemo", "pcmanfm", "thunar"],
+    "task manager": ["gnome-system-monitor", "ksysguard", "xfce4-taskmanager"],
+    "system monitor": ["gnome-system-monitor", "ksysguard", "xfce4-taskmanager"],
+    "control panel": ["gnome-control-center", "systemsettings5", "xfce4-settings-manager"],
+    "settings": ["gnome-control-center", "systemsettings5", "xfce4-settings-manager"],
+    "device manager": ["gnome-control-center", "systemsettings5"],
+    "disk management": ["gnome-disks", "kde-partitionmanager"],
+    "services": ["gnome-system-monitor"],
+    "registry": ["dconf-editor"],
+    "registry editor": ["dconf-editor"],
+    "cmd": ["gnome-terminal", "konsole", "xfce4-terminal", "x-terminal-emulator", "xterm"],
+    "command prompt": ["gnome-terminal", "konsole", "xfce4-terminal", "x-terminal-emulator", "xterm"],
+    "powershell": ["pwsh", "gnome-terminal", "konsole", "xterm"],
+    "terminal": ["gnome-terminal", "konsole", "xfce4-terminal", "x-terminal-emulator", "xterm"],
+    "snipping tool": ["gnome-screenshot", "flameshot", "spectacle"],
+    "snip": ["gnome-screenshot", "flameshot", "spectacle"],
+    "character map": ["gucharmap", "kcharselect"],
+    "on-screen keyboard": ["onboard", "florence"],
+    "magnifier": ["kmag"],
+    "narrator": ["orca"],
+    "archive manager": ["file-roller", "ark", "xarchiver"],
+    "software": ["gnome-software", "plasma-discover", "software-center"],
+    "software center": ["gnome-software", "plasma-discover", "software-center"],
+    "firefox": ["firefox"],
+    "chrome": ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium"],
+    "chromium": ["chromium-browser", "chromium"],
+    "edge": ["microsoft-edge", "microsoft-edge-stable"],
+    "microsoft edge": ["microsoft-edge", "microsoft-edge-stable"],
+}
+
+APP_PATHS = _APP_PATHS_LINUX if IS_LINUX else _APP_PATHS_WINDOWS
 
 SITES = {
     "youtube": "https://www.youtube.com",
@@ -220,17 +273,24 @@ FOLDERS = {
     "music": Path.home() / "Music",
     "home": Path.home(),
     "user folder": Path.home(),
-    "onedrive": Path.home() / "OneDrive",
-    "recycle bin": None,  # special shell folder
-    "this pc": None,
-    "my computer": None,
 }
 
-SHELL_LOCATIONS = {
-    "recycle bin": "shell:RecycleBinFolder",
-    "this pc": "shell:MyComputerFolder",
-    "my computer": "shell:MyComputerFolder",
-}
+if IS_LINUX:
+    FOLDERS["recycle bin"] = Path.home() / ".local/share/Trash/files"
+    FOLDERS["trash"] = Path.home() / ".local/share/Trash/files"
+    FOLDERS["this pc"] = Path("/")
+    FOLDERS["my computer"] = Path("/")
+    SHELL_LOCATIONS = {}
+else:
+    FOLDERS["onedrive"] = Path.home() / "OneDrive"
+    FOLDERS["recycle bin"] = None  # special shell folder
+    FOLDERS["this pc"] = None
+    FOLDERS["my computer"] = None
+    SHELL_LOCATIONS = {
+        "recycle bin": "shell:RecycleBinFolder",
+        "this pc": "shell:MyComputerFolder",
+        "my computer": "shell:MyComputerFolder",
+    }
 
 
 # ---------- Dynamic app index (Start Menu + Desktop + UWP) ----------
@@ -257,6 +317,45 @@ def _scan_shortcuts(root: Path):
     for p in root.rglob("*.url"):
         results.append((p.stem.strip().lower(), str(p)))
     return results
+
+
+_FIELD_CODE_RE = re.compile(r"%[fFuUdDnNickvm]")
+
+
+def _scan_desktop_files(root: Path):
+    """Parse .desktop launcher files (freedesktop.org spec)."""
+    results = []
+    if not root.exists():
+        return results
+    for p in root.glob("*.desktop"):
+        try:
+            cp = configparser.ConfigParser(interpolation=None, strict=False)
+            cp.read(p, encoding="utf-8")
+            if "Desktop Entry" not in cp:
+                continue
+            entry = cp["Desktop Entry"]
+            if entry.get("Type", "Application") != "Application":
+                continue
+            if entry.get("NoDisplay", "false").strip().lower() == "true":
+                continue
+            if entry.get("Hidden", "false").strip().lower() == "true":
+                continue
+            name = entry.get("Name", "").strip()
+            exec_cmd = entry.get("Exec", "").strip()
+            if name and exec_cmd:
+                results.append((name.lower(), exec_cmd))
+        except Exception:
+            continue
+    return results
+
+
+def _launch_desktop_exec(exec_cmd: str):
+    """Launch a .desktop Exec= line, stripping %f/%U/etc field codes."""
+    cmd = _FIELD_CODE_RE.sub("", exec_cmd).strip()
+    parts = shlex.split(cmd)
+    if not parts:
+        raise RuntimeError("empty launch command")
+    subprocess.Popen(parts)
 
 
 def _scan_uwp():
@@ -295,16 +394,28 @@ def build_app_index():
 
 def _do_build():
     items = []
-    roots = [
-        Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
-        Path(os.environ.get("PROGRAMDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
-        Path.home() / "Desktop",
-        Path.home() / "OneDrive/Desktop",
-        Path(os.environ.get("PUBLIC", "")) / "Desktop",
-    ]
-    for r in roots:
-        items.extend(_scan_shortcuts(r))
-    items.extend(_scan_uwp())
+    if IS_LINUX:
+        roots = [
+            Path("/usr/share/applications"),
+            Path("/usr/local/share/applications"),
+            Path("/var/lib/snapd/desktop/applications"),
+            Path.home() / ".local/share/applications",
+            Path.home() / ".local/share/flatpak/exports/share/applications",
+            Path("/var/lib/flatpak/exports/share/applications"),
+        ]
+        for r in roots:
+            items.extend(_scan_desktop_files(r))
+    else:
+        roots = [
+            Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
+            Path(os.environ.get("PROGRAMDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
+            Path.home() / "Desktop",
+            Path.home() / "OneDrive/Desktop",
+            Path(os.environ.get("PUBLIC", "")) / "Desktop",
+        ]
+        for r in roots:
+            items.extend(_scan_shortcuts(r))
+        items.extend(_scan_uwp())
 
     # Dedup by (name, target)
     seen = set(); unique = []
@@ -373,6 +484,27 @@ def _send_hotkey(vks: list[int]):
     for v in reversed(vks): ctypes.windll.user32.keybd_event(v, 0, 2, 0)
 
 
+def _xdotool_key(keys: str):
+    """Send a key combo (e.g. 'ctrl+c') via xdotool — X11/XWayland only."""
+    if not shutil.which("xdotool"):
+        raise RuntimeError("xdotool isn't installed (sudo apt install xdotool).")
+    subprocess.run(["xdotool", "key", "--clearmodifiers", keys], timeout=3)
+
+
+def _first_available(cmds) -> str | None:
+    for c in cmds:
+        if shutil.which(c):
+            return c
+    return None
+
+
+def _open_path(path: str):
+    if IS_LINUX:
+        subprocess.Popen(["xdg-open", path])
+    else:
+        os.startfile(path)
+
+
 def open_url(target: str) -> str:
     t = (target or "").strip().lower()
     url = SITES.get(t)
@@ -397,7 +529,7 @@ def open_app(name: str) -> str:
     # Built-in folders
     if key in FOLDERS and FOLDERS[key] is not None:
         try:
-            os.startfile(str(FOLDERS[key])); return f"Opening {key}."
+            _open_path(str(FOLDERS[key])); return f"Opening {key}."
         except Exception as e:
             return f"Couldn't open {key}: {e}"
     if key in SHELL_LOCATIONS:
@@ -410,6 +542,15 @@ def open_app(name: str) -> str:
     # Built-in apps
     path = APP_PATHS.get(key)
     if path:
+        if IS_LINUX:
+            cmd = _first_available(path) if isinstance(path, (list, tuple)) else path
+            if not cmd or not shutil.which(cmd):
+                return f"{name.title()} isn't installed."
+            try:
+                subprocess.Popen([cmd])
+                return f"Opening {name}."
+            except Exception as e:
+                return f"Couldn't open {name}: {e}"
         try:
             if path.startswith("ms-"):
                 os.startfile(path)
@@ -421,11 +562,13 @@ def open_app(name: str) -> str:
         except Exception as e:
             return f"Couldn't open {name}: {e}"
 
-    # Dynamic index (Start Menu / Desktop / UWP)
+    # Dynamic index (Start Menu / Desktop / UWP, or Linux .desktop entries)
     target = _find_app(key)
     if target:
         try:
-            if target.startswith("shell:"):
+            if IS_LINUX:
+                _launch_desktop_exec(target)
+            elif target.startswith("shell:"):
                 subprocess.Popen(["explorer.exe", target])
             else:
                 os.startfile(target)
@@ -433,7 +576,18 @@ def open_app(name: str) -> str:
         except Exception as e:
             return f"Couldn't launch {name}: {e}"
 
-    # Final fallback — let Windows try to interpret it
+    # Final fallback — try to find it directly on PATH (Linux) or let the
+    # shell interpret it (Windows)
+    if IS_LINUX:
+        exe = (shutil.which(key) or shutil.which(key.replace(" ", "-"))
+               or shutil.which(key.replace(" ", "")))
+        if exe:
+            try:
+                subprocess.Popen([exe])
+                return f"Opening {name}."
+            except Exception as e:
+                return f"Couldn't open {name}: {e}"
+        return f"I couldn't find {name}."
     try:
         subprocess.Popen(["cmd", "/c", "start", "", key], shell=False)
         return f"Trying to open {name}."
@@ -455,8 +609,129 @@ def youtube_search(query: str) -> str:
     return f"Searching YouTube for {query}."
 
 
+_pending_power_timer = None
+
+
+def _schedule_power(cmd: list, seconds: float = 10.0):
+    global _pending_power_timer
+    if _pending_power_timer is not None:
+        _pending_power_timer.cancel()
+    t = threading.Timer(seconds, lambda: subprocess.Popen(cmd))
+    t.daemon = True
+    _pending_power_timer = t
+    t.start()
+
+
+def _cancel_power() -> bool:
+    global _pending_power_timer
+    if _pending_power_timer is not None:
+        _pending_power_timer.cancel()
+        _pending_power_timer = None
+        return True
+    return False
+
+
+def _linux_system_action(a: str):
+    """Returns a response string, or None if `a` isn't handled here."""
+    if a in ("volume up", "vol up"):
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"]); return "Volume up."
+    if a in ("volume down", "vol down"):
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"]); return "Volume down."
+    if a == "max volume":
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "100%"]); return "Maximum volume."
+    if a == "min volume":
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "0%"]); return "Minimum volume."
+    if a in ("mute", "unmute"):
+        subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"]); return "Toggling mute."
+    if a in ("play", "pause"):
+        subprocess.run(["playerctl", "play-pause"]); return f"{a.title()}."
+    if a == "next":
+        subprocess.run(["playerctl", "next"]); return "Next track."
+    if a == "previous":
+        subprocess.run(["playerctl", "previous"]); return "Previous track."
+    if a == "brightness up":
+        subprocess.run(["brightnessctl", "set", "+10%"]); return "Brightness up."
+    if a == "brightness down":
+        subprocess.run(["brightnessctl", "set", "10%-"]); return "Brightness down."
+    if a == "screenshot":
+        cmd = _first_available(["gnome-screenshot", "flameshot", "spectacle"])
+        if cmd == "gnome-screenshot": subprocess.Popen([cmd, "-i"])
+        elif cmd == "flameshot": subprocess.Popen([cmd, "gui"])
+        elif cmd: subprocess.Popen([cmd])
+        else: return "No screenshot tool installed (try: sudo apt install gnome-screenshot)."
+        return "Opening the screenshot tool."
+    if a in ("show desktop", "minimize all"):
+        subprocess.run(["wmctrl", "-k", "on"]); return "Showing desktop."
+    if a == "task view":
+        _xdotool_key("super"); return "Task view."
+    if a in ("new desktop", "switch desktop"):
+        return "Virtual desktop switching isn't supported on Linux yet."
+    if a == "close window":
+        subprocess.run(["wmctrl", "-c", ":ACTIVE:"]); return "Closing window."
+    if a == "copy": _xdotool_key("ctrl+c"); return "Copied."
+    if a == "paste": _xdotool_key("ctrl+v"); return "Pasted."
+    if a == "cut": _xdotool_key("ctrl+x"); return "Cut."
+    if a == "undo": _xdotool_key("ctrl+z"); return "Undone."
+    if a == "redo": _xdotool_key("ctrl+y"); return "Redone."
+    if a == "select all": _xdotool_key("ctrl+a"); return "Selected all."
+    if a == "empty recycle bin":
+        trash = Path.home() / ".local/share/Trash"
+        shutil.rmtree(trash / "files", ignore_errors=True)
+        shutil.rmtree(trash / "info", ignore_errors=True)
+        (trash / "files").mkdir(parents=True, exist_ok=True)
+        (trash / "info").mkdir(parents=True, exist_ok=True)
+        return "Trash emptied."
+    if a == "lock":
+        cmd = _first_available(["loginctl", "gnome-screensaver-command", "xdg-screensaver"])
+        if cmd == "loginctl":
+            subprocess.Popen(["loginctl", "lock-session"])
+        elif cmd == "gnome-screensaver-command":
+            subprocess.Popen(["gnome-screensaver-command", "-l"])
+        elif cmd == "xdg-screensaver":
+            subprocess.Popen(["xdg-screensaver", "lock"])
+        else:
+            return "No screen locker found."
+        return "Locking the screen."
+    if a == "sleep":
+        subprocess.Popen(["systemctl", "suspend"]); return "Going to sleep."
+    if a == "shutdown":
+        _schedule_power(["systemctl", "poweroff"])
+        return "Shutting down in 10 seconds. Say cancel to abort."
+    if a == "restart":
+        _schedule_power(["systemctl", "reboot"])
+        return "Restarting in 10 seconds."
+    if a == "sign out":
+        cmd = _first_available(["gnome-session-quit"])
+        if cmd:
+            subprocess.Popen([cmd, "--logout", "--no-prompt"])
+        else:
+            subprocess.Popen(["loginctl", "terminate-user", os.environ.get("USER", "")])
+        return "Signing out."
+    if a == "cancel":
+        return "Cancelled." if _cancel_power() else "Nothing pending to cancel."
+    if a == "battery":
+        try:
+            import psutil
+            b = psutil.sensors_battery()
+            if b: return f"Battery at {int(b.percent)} percent."
+        except Exception:
+            pass
+        return "No battery detected."
+    return None
+
+
 def system_action(action: str) -> str:
     a = (action or "").lower()
+    if a == "time":
+        return "It is " + datetime.datetime.now().strftime("%I:%M %p")
+    if a == "date":
+        return "Today is " + datetime.datetime.now().strftime("%A, %B %d, %Y")
+    if IS_LINUX:
+        try:
+            r = _linux_system_action(a)
+        except Exception as e:
+            return f"System error. {e}"
+        return r if r is not None else f"I don't know how to {action}."
     try:
         if a in ("volume up", "vol up"):
             for _ in range(5): _press_key(0xAF)
@@ -545,10 +820,6 @@ def system_action(action: str) -> str:
         if a == "cancel":
             subprocess.Popen("shutdown /a", shell=True)
             return "Cancelled."
-        if a == "time":
-            return "It is " + datetime.datetime.now().strftime("%I:%M %p")
-        if a == "date":
-            return "Today is " + datetime.datetime.now().strftime("%A, %B %d, %Y")
         if a == "battery":
             try:
                 import psutil  # optional
@@ -590,7 +861,7 @@ def weather(location: str) -> str:
 def timer(value: str) -> str:
     """value like '5 minutes' or '30 seconds'."""
     v = (value or "").strip().lower()
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(second|sec|s|minute|min|m|hour|hr|h)\b", v)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|[smh])\b", v)
     if not m:
         return "How long? Try 'set a timer for 5 minutes'."
     n = float(m.group(1))
@@ -600,8 +871,16 @@ def timer(value: str) -> str:
 
     def _fire():
         try:
-            ctypes.windll.user32.MessageBeep(0xFFFFFFFF)
-            ctypes.windll.user32.MessageBoxW(0, f"⏰ Your timer for {label} is up.", "Jarvis Timer", 0x40 | 0x40000)
+            if IS_LINUX:
+                if shutil.which("notify-send"):
+                    subprocess.run(["notify-send", "-u", "critical", "Jarvis Timer",
+                                     f"Your timer for {label} is up."])
+                sound = Path("/usr/share/sounds/freedesktop/stereo/complete.oga")
+                if shutil.which("paplay") and sound.exists():
+                    subprocess.Popen(["paplay", str(sound)])
+            else:
+                ctypes.windll.user32.MessageBeep(0xFFFFFFFF)
+                ctypes.windll.user32.MessageBoxW(0, f"⏰ Your timer for {label} is up.", "Jarvis Timer", 0x40 | 0x40000)
         except Exception:
             pass
 
@@ -717,6 +996,10 @@ def type_text(text: str) -> str:
     def _do():
         import time
         time.sleep(1.5)
+        if IS_LINUX:
+            if shutil.which("xdotool"):
+                subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "12", text])
+            return
         for ch in text:
             vk = ctypes.windll.user32.VkKeyScanW(ord(ch))
             if vk == -1: continue
@@ -729,6 +1012,8 @@ def type_text(text: str) -> str:
             time.sleep(0.012)
 
     threading.Thread(target=_do, daemon=True).start()
+    if IS_LINUX and not shutil.which("xdotool"):
+        return "Typing needs xdotool — install it with 'sudo apt install xdotool'."
     return f"Typing in 1.5 seconds — focus the target window now."
 
 
@@ -915,6 +1200,50 @@ def stock_price(symbol: str) -> str:
     return f"Couldn't fetch {s}."
 
 
+def _clipboard_copy(text: str) -> bool:
+    if pyperclip is not None:
+        try:
+            pyperclip.copy(text); return True
+        except Exception:
+            pass
+    if IS_LINUX:
+        for cmd in (["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]):
+            if shutil.which(cmd[0]):
+                try:
+                    subprocess.run(cmd, input=text, text=True, timeout=2); return True
+                except Exception:
+                    continue
+        return False
+    try:
+        subprocess.run("clip", input=text, text=True, timeout=2); return True
+    except Exception:
+        return False
+
+
+def _clipboard_read() -> str | None:
+    if pyperclip is not None:
+        try:
+            return pyperclip.paste()
+        except Exception:
+            pass
+    if IS_LINUX:
+        for cmd in (["xclip", "-selection", "clipboard", "-o"], ["xsel", "--clipboard", "--output"]):
+            if shutil.which(cmd[0]):
+                try:
+                    out = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+                    return out.stdout
+                except Exception:
+                    continue
+        return None
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
+                             capture_output=True, text=True, timeout=3,
+                             creationflags=0x08000000)
+        return out.stdout
+    except Exception:
+        return None
+
+
 def password_gen(value: str = "") -> str:
     import string
     m = re.search(r"\d+", value or "")
@@ -922,21 +1251,16 @@ def password_gen(value: str = "") -> str:
     n = max(6, min(64, n))
     chars = string.ascii_letters + string.digits + "!@#$%&*?-_+="
     pw = "".join(random.choice(chars) for _ in range(n))
-    try:
-        # also copy to clipboard
-        subprocess.run("clip", input=pw, text=True, timeout=2)
+    if _clipboard_copy(pw):
         return f"Password generated and copied: {pw}"
-    except Exception:
-        return f"Password: {pw}"
+    return f"Password: {pw}"
 
 
 def random_color() -> str:
     h = "%06X" % random.randint(0, 0xFFFFFF)
     r = int(h[0:2], 16); g = int(h[2:4], 16); b = int(h[4:6], 16)
-    try:
-        subprocess.run("clip", input=f"#{h}", text=True, timeout=2)
-    except Exception: pass
-    return f"Random color: #{h}, RGB {r}, {g}, {b}. Copied."
+    copied = _clipboard_copy(f"#{h}")
+    return f"Random color: #{h}, RGB {r}, {g}, {b}." + (" Copied." if copied else "")
 
 
 def random_number(value: str) -> str:
@@ -984,28 +1308,62 @@ def lower_text(text: str) -> str:
 
 
 def clipboard_get() -> str:
-    try:
-        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
-                             capture_output=True, text=True, timeout=3,
-                             creationflags=0x08000000)
-        v = (out.stdout or "").strip()
-        return f"Clipboard: {v[:200]}" if v else "Clipboard is empty."
-    except Exception:
-        return "Couldn't read clipboard."
+    out = _clipboard_read()
+    v = (out or "").strip()
+    if v:
+        return f"Clipboard: {v[:200]}"
+    return "Clipboard is empty." if out is not None else "Couldn't read clipboard."
 
 
 def clipboard_set(text: str) -> str:
     if not text: return "Set clipboard to what?"
+    return "Copied." if _clipboard_copy(text) else "Couldn't write clipboard."
+
+
+def _linux_window(a: str) -> str:
     try:
-        subprocess.run("clip", input=text, text=True, timeout=2)
-        return "Copied."
-    except Exception:
-        return "Couldn't write clipboard."
+        if a in ("snap left", "left half"): _xdotool_key("super+Left"); return "Snapped left."
+        if a in ("snap right", "right half"): _xdotool_key("super+Right"); return "Snapped right."
+        if a in ("maximize", "maximise", "full screen"):
+            subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,maximized_vert,maximized_horz"])
+            return "Maximized."
+        if a in ("restore", "restore down", "minimize"):
+            subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "remove,maximized_vert,maximized_horz"])
+            return "Restored." if a != "minimize" else "Minimized."
+        if a == "alt tab": _xdotool_key("alt+Tab"); return "Switching window."
+        if a == "switch tab": _xdotool_key("ctrl+Tab"); return "Next tab."
+        if a == "previous tab": _xdotool_key("ctrl+shift+Tab"); return "Previous tab."
+        if a == "new tab": _xdotool_key("ctrl+t"); return "New tab."
+        if a == "close tab": _xdotool_key("ctrl+w"); return "Closed tab."
+        if a == "reopen tab": _xdotool_key("ctrl+shift+t"); return "Reopened tab."
+        if a == "refresh": _xdotool_key("F5"); return "Refreshing."
+        if a == "find": _xdotool_key("ctrl+f"); return "Find."
+        if a == "save": _xdotool_key("ctrl+s"); return "Saved."
+        if a == "print": _xdotool_key("ctrl+p"); return "Print dialog."
+        if a == "zoom in": _xdotool_key("ctrl+plus"); return "Zoom in."
+        if a == "zoom out": _xdotool_key("ctrl+minus"); return "Zoom out."
+        if a == "reset zoom": _xdotool_key("ctrl+0"); return "Zoom reset."
+        if a == "back": _xdotool_key("alt+Left"); return "Back."
+        if a == "forward": _xdotool_key("alt+Right"); return "Forward."
+        if a == "scroll up": _xdotool_key("Page_Up"); return "Page up."
+        if a == "scroll down": _xdotool_key("Page_Down"); return "Page down."
+        if a == "top": _xdotool_key("ctrl+Home"); return "Top."
+        if a == "bottom": _xdotool_key("ctrl+End"); return "Bottom."
+        if a == "address bar": _xdotool_key("ctrl+l"); return "Address bar."
+        if a == "downloads": _xdotool_key("ctrl+j"); return "Downloads."
+        if a == "history": _xdotool_key("ctrl+h"); return "History."
+        if a == "bookmarks": _xdotool_key("ctrl+shift+o"); return "Bookmarks."
+        if a == "dev tools": _xdotool_key("F12"); return "Dev tools."
+    except Exception as e:
+        return f"Window error: {e}"
+    return f"Don't know how to do that."
 
 
 def window(action: str) -> str:
     """Snap / move / arrange windows."""
     a = (action or "").lower().strip()
+    if IS_LINUX:
+        return _linux_window(a)
     try:
         if a in ("snap left", "left half"): _send_hotkey([0x5B, 0x25]); return "Snapped left."
         if a in ("snap right", "right half"): _send_hotkey([0x5B, 0x27]); return "Snapped right."
@@ -1045,6 +1403,18 @@ def kill_process(name: str) -> str:
     """Kill all processes matching a name (e.g. 'chrome', 'notepad')."""
     n = (name or "").strip().lower()
     if not n: return "Kill what?"
+    if IS_LINUX:
+        base = n[:-4] if n.endswith(".exe") else n
+        blocked = {"systemd", "init", "gnome-shell", "xorg", "wayland", "dbus-daemon", "kwin"}
+        if base in blocked: return f"I won't kill {base} — it's a system process."
+        try:
+            out = subprocess.run(["pkill", "-f", "-i", base],
+                                 capture_output=True, text=True, timeout=4)
+            if out.returncode == 0:
+                return f"Closed {base}."
+            return f"No running {base}."
+        except Exception as e:
+            return f"Couldn't kill {base}: {e}"
     if not n.endswith(".exe"): n += ".exe"
     blocked = {"explorer.exe", "winlogon.exe", "csrss.exe", "wininit.exe", "system.exe"}
     if n in blocked: return f"I won't kill {n} — it's a system process."

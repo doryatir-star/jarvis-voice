@@ -1,12 +1,48 @@
-# J.A.R.V.I.S. — Voice Assistant for Windows
+# J.A.R.V.I.S. — Voice Assistant for Windows & Ubuntu
 
 **▶ [Open the Robotic Arm Guide](https://doryatir-star.github.io/jarvis-voice/arm/)** · **▶ [Open the Rover Controller](https://doryatir-star.github.io/jarvis-voice/rover/)**
 
 A futuristic desktop AI assistant. Say **"Jarvis, …"** and it runs the command — opens any app, controls volume, searches the web, and more.
 
-## Download
+## Download (Windows)
 
 Grab the latest **`Jarvis.exe`** from the [Releases page](../../releases/latest) and double-click it. No install, no folder, no Python needed.
+
+## Run on Ubuntu
+
+1. Install the system packages Jarvis needs to talk and listen:
+
+   ```bash
+   sudo apt update
+   sudo apt install python3-venv python3-pip portaudio19-dev espeak \
+       xclip xdotool wmctrl playerctl brightnessctl
+   ```
+
+   - `portaudio19-dev` — required to build `pyaudio` (microphone input)
+   - `espeak` — the offline voice `pyttsx3` speaks with
+   - `xclip` — clipboard read/write ("copy that", password generator, etc.)
+   - `xdotool` / `wmctrl` — window control, hotkeys, "type this"
+   - `playerctl` / `brightnessctl` — media keys / screen brightness (optional; those commands just no-op without them)
+
+2. Clone the repo and run it:
+
+   ```bash
+   git clone <this repo>
+   cd jarvis-voice
+   ./run.sh
+   ```
+
+   `run.sh` creates a virtualenv, installs the Python dependencies, copies `.env.example` to `.env` on first run, and starts Jarvis.
+
+3. (Optional) build a standalone binary with its own app-launcher entry:
+
+   ```bash
+   ./build.sh
+   ```
+
+   Installs `~/.local/bin/jarvis` plus a `Jarvis` entry in your application menu.
+
+Ubuntu notes: volume/mute/media keys use `pactl`/`playerctl` (PulseAudio/PipeWire — both ship on stock Ubuntu), lock/suspend/shutdown/restart go through `loginctl`/`systemctl` (no `sudo` needed for your own session), and the app-launcher command ("Jarvis, open Blender") indexes `.desktop` files from `/usr/share/applications` and `~/.local/share/applications` instead of the Windows Start Menu.
 
 ## Features
 
@@ -33,7 +69,7 @@ Config options live in `.env` (see `.env.example`) — hub name/MAC, port assign
 
 ## Requirements
 
-- Windows 10 or 11
+- Windows 10/11, or Ubuntu 22.04+ (other Linux distros likely work too — see [Run on Ubuntu](#run-on-ubuntu) for the system packages)
 - Internet connection (speech recognition uses Google's free public API)
 - Microphone
 
@@ -45,9 +81,11 @@ Config options live in `.env` (see `.env.example`) — hub name/MAC, port assign
 
 ## Privacy
 
-Speech is sent to Google's public speech endpoint. No telemetry, no accounts, no stored data. A small diagnostic log lives at `%TEMP%\jarvis_voice.log`.
+Speech is sent to Google's public speech endpoint. No telemetry, no accounts, no stored data. A small diagnostic log lives at `%TEMP%\jarvis_voice.log` on Windows, or `/tmp/jarvis_voice.log` on Linux.
 
 ## Build from source
+
+**Windows:**
 
 ```bat
 git clone <this repo>
@@ -56,6 +94,16 @@ build.bat
 ```
 
 Produces `Jarvis.exe` on your Desktop.
+
+**Ubuntu:**
+
+```bash
+git clone <this repo>
+cd jarvis-voice
+./build.sh
+```
+
+Installs `~/.local/bin/jarvis` and adds a `Jarvis` entry to your application menu. See [Run on Ubuntu](#run-on-ubuntu) for the required system packages.
 
 ## License
 

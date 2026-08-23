@@ -1,6 +1,7 @@
 import os
 import audioop
 import queue
+import sys
 import tempfile
 import threading
 import time
@@ -9,6 +10,8 @@ import traceback
 import pyttsx3
 import speech_recognition as sr
 
+
+IS_LINUX = sys.platform.startswith("linux")
 
 LOG_PATH = os.path.join(tempfile.gettempdir(), "jarvis_voice.log")
 
@@ -47,8 +50,8 @@ def list_input_devices() -> list[tuple[int, str]]:
 
 def pick_default_device() -> int | None:
     """Pick the most likely real microphone (letting PortAudio default win is best)."""
-    # Returning None lets speech_recognition use the Windows default input,
-    # which respects the user's Windows → Sound settings. Most reliable.
+    # Returning None lets speech_recognition use the OS's default input
+    # device, which respects the user's system Sound settings. Most reliable.
     return None
 
 
@@ -95,7 +98,7 @@ class Voice:
             _log("mic init failed:\n" + traceback.format_exc())
             with self._mic_lock:
                 self.mic = None
-            self.on_error("Microphone init failed. Check Windows mic settings.")
+            self.on_error("Microphone init failed. Check your system's mic settings.")
 
     def set_device(self, device_index):
         """Swap the mic device safely — just signal the listener to reload."""
@@ -106,7 +109,9 @@ class Voice:
 
     def _init_tts(self):
         try:
-            self.engine = pyttsx3.init("sapi5")
+            # No driver name: pyttsx3 auto-selects sapi5 on Windows, espeak
+            # on Linux, nsss on macOS.
+            self.engine = pyttsx3.init()
             self.engine.setProperty("rate", 185)
             self.engine.setProperty("volume", 1.0)
             for v in self.engine.getProperty("voices"):
@@ -170,12 +175,21 @@ class Voice:
             if time.monotonic() - start > 30:
                 self._warned_silent = True
                 _log("silence watchdog tripped — no audio in 15s")
-                self.on_error(
-                    "I can't hear anything from the microphone. "
-                    "Open Windows Settings → Privacy & security → Microphone, "
-                    "turn ON 'Let desktop apps access your microphone', "
-                    "then use the dropdown in my window to pick a different mic."
-                )
+                if IS_LINUX:
+                    msg = (
+                        "I can't hear anything from the microphone. "
+                        "Open your system Sound settings and make sure the right "
+                        "input device is selected and unmuted, "
+                        "then use the dropdown in my window to pick a different mic."
+                    )
+                else:
+                    msg = (
+                        "I can't hear anything from the microphone. "
+                        "Open Windows Settings → Privacy & security → Microphone, "
+                        "turn ON 'Let desktop apps access your microphone', "
+                        "then use the dropdown in my window to pick a different mic."
+                    )
+                self.on_error(msg)
                 return
 
     def _listen_loop(self):

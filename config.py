@@ -14,10 +14,14 @@ def _app_dir() -> Path:
 
 APP_DIR = _app_dir()
 ENV_PATH = APP_DIR / ".env"
-APPDATA_ENV = Path(os.getenv("APPDATA", str(APP_DIR))) / "Jarvis" / ".env"
+if sys.platform.startswith("win"):
+    FALLBACK_ENV = Path(os.getenv("APPDATA", str(APP_DIR))) / "Jarvis" / ".env"
+else:
+    FALLBACK_ENV = Path(os.getenv("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "jarvis" / ".env"
 
-# Prefer .env next to the exe; fall back to %APPDATA%\Jarvis\.env
-for p in (ENV_PATH, APPDATA_ENV):
+# Prefer .env next to the app; fall back to the OS's per-user config dir
+# (%APPDATA%\Jarvis\.env on Windows, ~/.config/jarvis/.env on Linux).
+for p in (ENV_PATH, FALLBACK_ENV):
     if p.exists():
         load_dotenv(p)
         break
