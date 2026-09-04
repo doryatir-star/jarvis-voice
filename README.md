@@ -46,6 +46,8 @@ Cozmo doesn't have a claw, so claw commands don't apply — instead he has a lif
 
 Config options (`COZMO_DRIVE_SPEED`, `COZMO_DRIVE_SECONDS`, `COZMO_TURN_SPEED`, `COZMO_TURN_SECONDS`) live in `.env` — see `.env.example`.
 
+**Prefer your phone?** [`ios-cozmo-app/`](ios-cozmo-app/) is a native iPhone app that drives Cozmo directly — no PC needed. See its README for setup (built in Xcode) and important caveats — it reimplements Cozmo's undocumented Wi-Fi protocol and hasn't been tested against a Mac, real iPhone, or real Cozmo.
+
 ## Requirements
 
 - Windows 10 or 11
