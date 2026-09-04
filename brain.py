@@ -67,6 +67,13 @@ ROBOT_MAP = {
     ("robot_head", "center"): ["look straight", "look forward", "center your head"],
     ("robot_claw", "open"): ["open the claw", "open your claw", "release the claw", "let go"],
     ("robot_claw", "close"): ["close the claw", "close your claw", "grab it", "grip"],
+    ("robot_lift", "up"): ["lift up", "raise your lift", "raise your arm", "lift your arm"],
+    ("robot_lift", "down"): ["lift down", "lower your lift", "lower your arm", "drop your arm"],
+    ("robot_lights", "green"): ["green lights", "lights green", "turn your lights green"],
+    ("robot_lights", "red"): ["red lights", "lights red", "turn your lights red"],
+    ("robot_lights", "blue"): ["blue lights", "lights blue", "turn your lights blue"],
+    ("robot_lights", "white"): ["white lights", "lights white", "turn your lights white"],
+    ("robot_lights", "off"): ["lights off", "turn off your lights", "lights out"],
 }
 
 OPEN_VERBS = ("open", "launch", "start", "run", "bring up", "pull up", "show me")
@@ -353,6 +360,12 @@ class Brain:
         robot_action, robot_value = _match_robot(t)
         if robot_action:
             return {"action": robot_action, "value": robot_value, "speak": ""}
+
+        # Cozmo animation clips are free-form (exact clip name), so they
+        # can't live in ROBOT_MAP's fixed phrase lists.
+        m = re.match(r"play(?: the)? animation (.+)$", t)
+        if m:
+            return {"action": "robot_anim", "value": m.group(1).strip(), "speak": ""}
 
         # Kill process
         m = re.match(r"(?:kill|close|quit|terminate|end) (?:process )?(\w[\w ]*?)(?: process)?$", t)

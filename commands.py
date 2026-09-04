@@ -1072,34 +1072,53 @@ def _robot():
     return _ROBOT_HUB
 
 
-def robot_forward(value: str = "") -> str:
+def _robot_call(method: str, arg: str, no_support: str) -> str:
     hub = _robot()
-    return hub.drive("forward") if hub else "The rover isn't connected."
+    if not hub:
+        return "The robot isn't connected."
+    fn = getattr(hub, method, None)
+    if fn is None:
+        return no_support
+    return fn(arg)
+
+
+def robot_forward(value: str = "") -> str:
+    return _robot_call("drive", "forward", "This robot can't drive.")
 
 
 def robot_backward(value: str = "") -> str:
-    hub = _robot()
-    return hub.drive("backward") if hub else "The rover isn't connected."
+    return _robot_call("drive", "backward", "This robot can't drive.")
 
 
 def robot_turn(direction: str) -> str:
-    hub = _robot()
-    return hub.turn(direction) if hub else "The rover isn't connected."
+    return _robot_call("turn", direction, "This robot can't turn.")
 
 
 def robot_stop(value: str = "") -> str:
     hub = _robot()
-    return hub.stop_all() if hub else "The rover isn't connected."
+    if not hub:
+        return "The robot isn't connected."
+    return hub.stop_all()
 
 
 def robot_head(direction: str) -> str:
-    hub = _robot()
-    return hub.turn_head(direction) if hub else "The rover isn't connected."
+    return _robot_call("turn_head", direction, "This robot doesn't have a moving head.")
 
 
 def robot_claw(action: str) -> str:
-    hub = _robot()
-    return hub.claw(action) if hub else "The rover isn't connected."
+    return _robot_call("claw", action, "This robot doesn't have a claw.")
+
+
+def robot_lift(action: str) -> str:
+    return _robot_call("lift", action, "This robot doesn't have a lift.")
+
+
+def robot_lights(color: str) -> str:
+    return _robot_call("lights", color, "This robot doesn't have lights.")
+
+
+def robot_anim(name: str) -> str:
+    return _robot_call("play_anim", name, "This robot doesn't support animations.")
 
 
 def execute(action: str, value: str) -> str:
@@ -1144,4 +1163,7 @@ def execute(action: str, value: str) -> str:
     if a == "robot_stop": return robot_stop(v)
     if a == "robot_head": return robot_head(v)
     if a == "robot_claw": return robot_claw(v)
+    if a == "robot_lift": return robot_lift(v)
+    if a == "robot_lights": return robot_lights(v)
+    if a == "robot_anim": return robot_anim(v)
     return ""
