@@ -135,7 +135,7 @@ class TestCommandLanguage(unittest.TestCase):
         for cmd in ["forward", "backward", "left", "right", "stop",
                     "head up", "head down", "head center",
                     "lift up", "lift down", "lights blue"]:
-            cc.handle_command(link, cmd)
+            cc.think(link, cmd)
         self.assertEqual(link.calls, [
             ("drive", "forward"), ("drive", "backward"),
             ("turn", "left"), ("turn", "right"),
@@ -147,8 +147,62 @@ class TestCommandLanguage(unittest.TestCase):
 
     def test_unknown_command_does_not_crash(self):
         link = FakeLink()
-        cc.handle_command(link, "asdkjfh")  # should print a hint, not raise
+        cc.think(link, "asdkjfh")  # should print a hint, not raise
         self.assertEqual(link.calls, [])
+
+    def test_natural_phrasing_is_understood_not_just_exact_matches(self):
+        link = FakeLink()
+        for cmd in ["can you turn left please", "go forward now", "Hey Cozmo, STOP!",
+                    "would you look up for me", "please lower your arm"]:
+            cc.think(link, cmd)
+        self.assertEqual(link.calls, [
+            ("turn", "left"), ("drive", "forward"), ("stop",),
+            ("head", "up"), ("lift", "down"),
+        ])
+
+    def test_spin_turns_without_crashing(self):
+        link = FakeLink()
+        cc.think(link, "spin around!")
+        self.assertEqual(link.calls, [("turn", "left")])
+
+
+class TestOfflinePersonality(unittest.TestCase):
+    """These must work with zero network access, since the phone is on
+    Cozmo's own isolated Wi-Fi hotspot while this runs."""
+
+    def test_joke_returns_one_of_the_canned_jokes(self):
+        reply = cc.think(FakeLink(), "tell me a joke")
+        self.assertIn(reply, cc.JOKES)
+
+    def test_time_reply_contains_am_or_pm(self):
+        reply = cc.think(FakeLink(), "what time is it")
+        self.assertTrue(reply.endswith("AM.") or reply.endswith("PM."))
+
+    def test_coin_flip_is_heads_or_tails(self):
+        reply = cc.think(FakeLink(), "flip a coin")
+        self.assertIn(reply, ("Heads!", "Tails!"))
+
+    def test_dice_roll_respects_requested_sides(self):
+        for _ in range(20):
+            reply = cc.think(FakeLink(), "roll a d4")
+            self.assertRegex(reply, r"^You rolled a [1-4]!$")
+
+    def test_basic_math_is_computed(self):
+        reply = cc.think(FakeLink(), "what is 12 * 3")
+        self.assertEqual(reply, "That's 36.")
+
+    def test_calc_rejects_non_arithmetic_input_instead_of_executing_it(self):
+        # _safe_calc must never reach eval() with anything but digits/operators.
+        self.assertIsNone(cc._safe_calc("__import__('os').system('echo pwned')"))
+        self.assertIsNone(cc._safe_calc("open('/etc/passwd')"))
+
+    def test_greeting_and_identity_replies(self):
+        self.assertEqual(cc.think(FakeLink(), "hello"), "Hi hi! I'm Cozmo!")
+        self.assertIn("Cozmo", cc.think(FakeLink(), "who are you"))
+
+    def test_unknown_topic_mentions_no_internet_instead_of_pretending_to_know(self):
+        reply = cc.think(FakeLink(), "what's the weather like today")
+        self.assertIn("No internet", reply)
 
 
 if __name__ == "__main__":
