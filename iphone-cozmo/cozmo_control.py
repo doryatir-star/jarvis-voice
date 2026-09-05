@@ -282,8 +282,15 @@ class CozmoLink:
             self.on_log("Got body info -- initializing.")
             self._send_engine([pkt_set_origin()])
             self._send_engine([pkt_sync_time()])
-            self.ready = True
-            self.on_log("Cozmo ready!")
+            # pycozmo's own reference client waits here for motor calibration
+            # to finish before treating the robot as ready -- a command sent
+            # too early could otherwise be silently dropped. Runs on a timer
+            # so it doesn't block this thread from handling other packets.
+            threading.Timer(0.5, self._mark_ready).start()
+
+    def _mark_ready(self):
+        self.ready = True
+        self.on_log("Cozmo ready!")
 
     # ---- High-level commands ----
     def drive(self, direction, speed=100.0, seconds=1.5):
