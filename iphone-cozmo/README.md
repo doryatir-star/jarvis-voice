@@ -60,6 +60,42 @@ Real movement commands (drive/turn/head/lift/lights) actually move Cozmo. Everyt
 on screen, which stops the keep-alive ping Cozmo expects — if you lock
 your phone or switch apps, he'll disconnect.
 
+## Want an actual AI deciding what Cozmo does? Use `cozmo_ai.py` instead
+
+`cozmo_control.py`'s "brain" is just pattern matching — it recognizes
+phrases and runs fixed logic. `cozmo_ai.py` is different: it sends what
+you say to **Claude**, and Claude itself decides whether to reply, move
+Cozmo, or both — real reasoning, not a lookup table.
+
+This needs two things `cozmo_control.py` doesn't:
+
+1. **An Anthropic API key** — https://console.anthropic.com. This is a
+   real account with pay-as-you-go billing (not free, not a
+   subscription) — typically a fraction of a cent per exchange with the
+   default model, but real money nonetheless.
+2. **Your iPhone's cellular data turned on.** Cozmo's Wi-Fi has no
+   internet, but Claude needs internet to think. As long as cellular
+   data is on, iOS automatically routes internet traffic (Claude) over
+   cellular while Wi-Fi keeps talking to Cozmo — you don't have to
+   switch networks back and forth, just don't have cellular data turned
+   off.
+
+Setup:
+1. Get an API key from the link above.
+2. Paste **both** `cozmo_control.py` and `cozmo_ai.py` into your Python
+   app (`cozmo_ai.py` imports the other one — both files need to be
+   there).
+3. Open `cozmo_ai.py` and paste your key into the `API_KEY = ` line near
+   the top, replacing `"PASTE_YOUR_KEY_HERE"`.
+4. Run `cozmo_ai.py` instead of `cozmo_control.py`. Everything else
+   (waking Cozmo, joining his Wi-Fi) is identical.
+
+It uses raw HTTPS calls to Claude's API, not the official `anthropic`
+Python package — that package depends on compiled code that no on-device
+iOS Python app can install (iOS blocks apps from loading unsigned native
+code, no exceptions). The request format matches Anthropic's public API
+documentation exactly; see the module's own docstring for details.
+
 ## Why you should trust this more than the native iOS app
 
 Both `cozmo_control.py` and [`ios-cozmo-app/`](../ios-cozmo-app/)
