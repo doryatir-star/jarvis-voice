@@ -41,6 +41,8 @@ screen on while you're driving him.
 =====================================================================
 """
 import math
+import random
+import re
 import socket
 import struct
 import threading
@@ -316,38 +318,110 @@ class CozmoLink:
         self._send_engine([pkt_light_side(c)])
 
 
-# ---------- Tiny command language, so this doubles as a text "AI" you talk to ----------
+# ---------- The "AI" brain: free-form phrase understanding + real movement,
+# plus fully offline personality/utility replies. Everything here has to
+# work with ZERO internet access, because your iPhone's Wi-Fi is joined to
+# Cozmo's own isolated hotspot while this runs (see the module docstring) —
+# so unlike the website companion, there is no DuckDuckGo/Wikipedia lookup
+# here. What's offered instead is real physical control of a real robot,
+# which the website could never do.
 
-def handle_command(link, text):
+JOKES = [
+    "Why did the robot go on a diet? Too many bytes!",
+    "I'm not lazy, I'm in low-power idle mode.",
+    "My favorite game is fetch. I fetch data. Ha!",
+    "Beep boop. That was my best joke. Beep.",
+    "I tried yoga once. Turns out I only have two settings: stop and go.",
+]
+
+# (regex, handler) pairs, checked in order — first match wins. Handlers take
+# (link, match) and return a string to print, or None if they already
+# printed their own message.
+_MOVE_PATTERNS = [
+    (re.compile(r"\b(move|go|drive|walk|roll)\s+forward\b|^forward$|^fwd$"),
+     lambda link, m: (link.drive("forward"), "Moving forward.")[1]),
+    (re.compile(r"\b(move|go|drive|walk|roll)\s+back(ward)?\b|^back(ward)?$"),
+     lambda link, m: (link.drive("backward"), "Moving backward.")[1]),
+    (re.compile(r"\bturn\s+left\b|^left$"),
+     lambda link, m: (link.turn("left"), "Turning left.")[1]),
+    (re.compile(r"\bturn\s+right\b|^right$"),
+     lambda link, m: (link.turn("right"), "Turning right.")[1]),
+    (re.compile(r"\bspin\b"),
+     lambda link, m: (link.turn("left", speed=150.0, seconds=1.2), "Wheeeee!")[1]),
+    (re.compile(r"\b(stop|halt|freeze|stay)\b"),
+     lambda link, m: (link.stop(), "Stopping.")[1]),
+    (re.compile(r"\blook\s+up\b|\bhead\s+up\b"),
+     lambda link, m: (link.head("up"), "Looking up.")[1]),
+    (re.compile(r"\blook\s+down\b|\bhead\s+down\b"),
+     lambda link, m: (link.head("down"), "Looking down.")[1]),
+    (re.compile(r"\blook\s+(straight|forward|ahead)\b|\bhead\s+(center|centre)\b"),
+     lambda link, m: (link.head("center"), "Centering head.")[1]),
+    (re.compile(r"\blift\s+up\b|\braise\s+(your\s+)?(lift|arm)\b"),
+     lambda link, m: (link.lift("up"), "Lift up.")[1]),
+    (re.compile(r"\blift\s+down\b|\blower\s+(your\s+)?(lift|arm)\b"),
+     lambda link, m: (link.lift("down"), "Lift down.")[1]),
+    (re.compile(r"\blights?\s+(green|red|blue|white|off)\b"),
+     lambda link, m: (link.lights(m.group(1)), f"Lights -> {m.group(1)}.")[1]),
+]
+
+
+def _safe_calc(expr):
+    if not re.match(r"^[\d\s+\-*/().]+$", expr):
+        return None
+    try:
+        val = eval(compile(expr, "<calc>", "eval"), {"__builtins__": {}}, {})  # noqa: S307
+        return val if isinstance(val, (int, float)) else None
+    except Exception:
+        return None
+
+
+def think(link, text):
+    """Understands free-form phrasing (not just exact commands), drives
+    Cozmo for real when it's a movement request, and otherwise chats using
+    a small offline personality. Returns the reply string (also printed)."""
     t = text.strip().lower()
     if not t:
-        return
-    if t in ("forward", "fwd", "move forward", "go forward"):
-        link.drive("forward"); print("Moving forward.")
-    elif t in ("backward", "back", "move backward", "go backward"):
-        link.drive("backward"); print("Moving backward.")
-    elif t in ("left", "turn left"):
-        link.turn("left"); print("Turning left.")
-    elif t in ("right", "turn right"):
-        link.turn("right"); print("Turning right.")
-    elif t in ("stop", "halt"):
-        link.stop(); print("Stopping.")
-    elif t in ("head up", "look up"):
-        link.head("up"); print("Looking up.")
-    elif t in ("head down", "look down"):
-        link.head("down"); print("Looking down.")
-    elif t in ("head center", "look straight", "look forward"):
-        link.head("center"); print("Centering head.")
-    elif t in ("lift up",):
-        link.lift("up"); print("Lift up.")
-    elif t in ("lift down",):
-        link.lift("down"); print("Lift down.")
-    elif t.startswith("lights "):
-        color = t.split(" ", 1)[1].strip()
-        link.lights(color); print(f"Lights -> {color}.")
+        return None
+
+    for pattern, handler in _MOVE_PATTERNS:
+        m = pattern.search(t)
+        if m:
+            reply = handler(link, m)
+            print(reply)
+            return reply
+
+    if re.search(r"^(hi|hello|hey|yo|sup)\b", t):
+        reply = "Hi hi! I'm Cozmo!"
+    elif "how are you" in t:
+        reply = "Rolling around great, thanks for asking!"
+    elif re.search(r"\byour name\b|\bwho are you\b", t):
+        reply = "I'm Cozmo — you're talking to me over my own Wi-Fi, no internet needed."
+    elif re.search(r"\bthank(s| you)\b", t):
+        reply = "Aw, you're welcome!"
+    elif "joke" in t:
+        reply = random.choice(JOKES)
+    elif re.search(r"what(?:'s| is)?\s+(the\s+)?time|what time is it", t):
+        reply = "It's " + time.strftime("%I:%M %p") + "."
+    elif re.search(r"what(?:'s| is)?\s+(the\s+)?date|what day is it|today'?s date", t):
+        reply = "Today is " + time.strftime("%A, %B %d") + "."
+    elif re.search(r"flip a coin|coin flip", t):
+        reply = random.choice(["Heads!", "Tails!"])
+    elif re.search(r"\broll (a )?(\d+\s*)?d(ice)?(\d+)?\b", t):
+        m = re.search(r"d(ice)?(\d+)", t)
+        sides = int(m.group(2)) if m and m.group(2) else 6
+        reply = f"You rolled a {random.randint(1, sides)}!"
     else:
-        print("Didn't understand. Try: forward, backward, left, right, stop, "
-              "head up/down/center, lift up/down, lights <green/red/blue/white/off>, quit")
+        cm = re.match(r"^(?:calc(?:ulate)?|what(?:'s| is))\s+(.+)$", t)
+        val = _safe_calc(cm.group(1)) if cm else None
+        if val is not None:
+            reply = f"That's {val}."
+        else:
+            reply = ("Not sure about that one -- but I can move, turn, spin, look up/down, "
+                     "lift up/down, change my lights, tell a joke, or tell you the time. "
+                     "(No internet out here on my own Wi-Fi, so no web lookups, sorry!)")
+
+    print(reply)
+    return reply
 
 
 def main():
@@ -360,9 +434,12 @@ def main():
               "raised and lowered once)?")
         return
     print()
-    print("Cozmo is ready! Type a command and press return.")
-    print("Commands: forward, backward, left, right, stop, head up/down/center, "
-          "lift up/down, lights green/red/blue/white/off, quit")
+    print("Cozmo is ready! Type naturally -- \"go forward\", \"can you turn left\", "
+          "\"look up\", \"tell me a joke\" -- or 'quit' to disconnect.")
+    print("Movement: forward/backward, left/right, spin, stop, look up/down/straight, "
+          "lift up/down, lights green/red/blue/white/off.")
+    print("Chat: jokes, time, date, coin flip, dice, basic math, small talk "
+          "(all offline -- no internet out here on Cozmo's own Wi-Fi).")
     print("(Keep this app open and your screen on -- iOS disconnects Cozmo "
           "if this app gets backgrounded.)")
     try:
@@ -373,7 +450,7 @@ def main():
                 break
             if cmd.strip().lower() in ("quit", "exit"):
                 break
-            handle_command(link, cmd)
+            think(link, cmd)
     finally:
         link.disconnect()
         print("Disconnected.")

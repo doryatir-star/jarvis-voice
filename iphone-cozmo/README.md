@@ -47,11 +47,14 @@ Got firmware signature -- enabling motors.
 Got body info -- initializing.
 Cozmo ready!
 
-Cozmo is ready! Type a command and press return.
-Commands: forward, backward, left, right, stop, head up/down/center, lift up/down, lights green/red/blue/white/off, quit
+Cozmo is ready! Type naturally -- "go forward", "can you turn left", "look up", "tell me a joke" -- or 'quit' to disconnect.
+Movement: forward/backward, left/right, spin, stop, look up/down/straight, lift up/down, lights green/red/blue/white/off.
+Chat: jokes, time, date, coin flip, dice, basic math, small talk (all offline -- no internet out here on Cozmo's own Wi-Fi).
 > 
 ```
-Type a command, hit return, watch Cozmo move. Type `quit` to disconnect.
+Talk to it naturally — "can you turn left", "go forward", "tell me a joke" all work, not just exact phrases. Type `quit` to disconnect.
+
+Real movement commands (drive/turn/head/lift/lights) actually move Cozmo. Everything else — jokes, time, date, coin flips, dice, basic math, small talk — is answered by a small offline personality built into the script itself. It can't look anything up online (see below for why), so questions outside that list get an honest "I don't know that one" instead of a made-up answer.
 
 **Keep the app open and your screen on.** iOS suspends apps that aren't
 on screen, which stops the keep-alive ping Cozmo expects — if you lock
