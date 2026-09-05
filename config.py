@@ -28,6 +28,10 @@ WAKE_WORDS = ("jarvis", "hey jarvis")
 ASSISTANT_NAME = "Jarvis"
 USER_NAME = os.getenv("JARVIS_USER", "Sir")
 
+# --- Robot backend: "lego" (BOOST Move Hub rover, default) or "cozmo"
+# (a real Anki/Digital Dream Labs Cozmo robot over Wi-Fi) ---
+ROBOT_TYPE = os.getenv("ROBOT_TYPE", "lego").strip().lower()
+
 # --- LEGO rover (optional) ---
 ROBOT_HUB_NAME = os.getenv("ROBOT_HUB_NAME", "LEGO Move Hub")
 ROBOT_HUB_MAC = os.getenv("ROBOT_HUB_MAC", "")
@@ -38,3 +42,9 @@ ROBOT_DRIVE_SECONDS = float(os.getenv("ROBOT_DRIVE_SECONDS", "1.5"))
 ROBOT_TURN_SECONDS = float(os.getenv("ROBOT_TURN_SECONDS", "0.8"))
 ROBOT_LEFT_INVERT = os.getenv("ROBOT_LEFT_INVERT", "false").lower() == "true"
 ROBOT_RIGHT_INVERT = os.getenv("ROBOT_RIGHT_INVERT", "false").lower() == "true"
+
+# --- Cozmo (optional) --- speeds in mm/s (Cozmo's max is 200 mm/s) ---
+COZMO_DRIVE_SPEED = float(os.getenv("COZMO_DRIVE_SPEED", "100"))
+COZMO_DRIVE_SECONDS = float(os.getenv("COZMO_DRIVE_SECONDS", "1.5"))
+COZMO_TURN_SPEED = float(os.getenv("COZMO_TURN_SPEED", "80"))
+COZMO_TURN_SECONDS = float(os.getenv("COZMO_TURN_SECONDS", "0.8"))

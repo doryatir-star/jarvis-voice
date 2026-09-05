@@ -3,15 +3,17 @@ import sys
 from PyQt5 import QtCore, QtWidgets
 
 from config import (
-    ASSISTANT_NAME, USER_NAME,
+    ASSISTANT_NAME, USER_NAME, ROBOT_TYPE,
     ROBOT_HUB_NAME, ROBOT_HUB_MAC, ROBOT_CLAW_PORT, ROBOT_HEAD_PORT,
     ROBOT_DRIVE_SPEED, ROBOT_DRIVE_SECONDS, ROBOT_TURN_SECONDS,
     ROBOT_LEFT_INVERT, ROBOT_RIGHT_INVERT,
+    COZMO_DRIVE_SPEED, COZMO_DRIVE_SECONDS, COZMO_TURN_SPEED, COZMO_TURN_SECONDS,
 )
 from ui import JarvisWindow
 from voice import Voice, list_input_devices
 from brain import Brain
 from lego_hub import LegoHub
+from cozmo_hub import CozmoHub
 import commands
 commands.build_app_index()
 
@@ -67,15 +69,24 @@ class Jarvis:
         self.win.mic_btn.toggled.connect(self._mic_toggled)
         self.win.device_changed.connect(self._on_device_change)
 
-        self.hub = LegoHub(
-            hub_name=ROBOT_HUB_NAME, hub_mac=ROBOT_HUB_MAC,
-            claw_port=ROBOT_CLAW_PORT, head_port=ROBOT_HEAD_PORT,
-            drive_speed=ROBOT_DRIVE_SPEED, drive_seconds=ROBOT_DRIVE_SECONDS,
-            turn_seconds=ROBOT_TURN_SECONDS,
-            left_invert=ROBOT_LEFT_INVERT, right_invert=ROBOT_RIGHT_INVERT,
-            on_status=lambda s: self.sig.hub_status.emit(s.capitalize()),
-            on_error=lambda m: self.sig.jarvis_said.emit(m),
-        )
+        if ROBOT_TYPE == "cozmo":
+            self.win.rover_panel.title.setText("COZMO")
+            self.hub = CozmoHub(
+                drive_speed=COZMO_DRIVE_SPEED, drive_seconds=COZMO_DRIVE_SECONDS,
+                turn_speed=COZMO_TURN_SPEED, turn_seconds=COZMO_TURN_SECONDS,
+                on_status=lambda s: self.sig.hub_status.emit(s.capitalize()),
+                on_error=lambda m: self.sig.jarvis_said.emit(m),
+            )
+        else:
+            self.hub = LegoHub(
+                hub_name=ROBOT_HUB_NAME, hub_mac=ROBOT_HUB_MAC,
+                claw_port=ROBOT_CLAW_PORT, head_port=ROBOT_HEAD_PORT,
+                drive_speed=ROBOT_DRIVE_SPEED, drive_seconds=ROBOT_DRIVE_SECONDS,
+                turn_seconds=ROBOT_TURN_SECONDS,
+                left_invert=ROBOT_LEFT_INVERT, right_invert=ROBOT_RIGHT_INVERT,
+                on_status=lambda s: self.sig.hub_status.emit(s.capitalize()),
+                on_error=lambda m: self.sig.jarvis_said.emit(m),
+            )
         commands.set_robot_hub(self.hub)
         self.hub.start()
 
