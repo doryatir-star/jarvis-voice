@@ -21,6 +21,7 @@ Grab the latest **`Jarvis.exe`** from the [Releases page](../../releases/latest)
 - **LEGO robotic arm build guide (new!)** — a phone-friendly step-by-step guide for building a 3-motor robotic arm (base + shoulder + gripper) around the Powered Up Technic Large Hub (element **88016**), plus a Bluetooth wiring-tester page. Source in [`docs/arm/`](docs/arm/) — **[open the live guide here](https://doryatir-star.github.io/jarvis-voice/arm/)**.
 - **Real Anki Cozmo control (optional)** — drive an actual Cozmo robot by voice over Wi-Fi: "Jarvis, move forward / turn left / look up / lift up / green lights / stop". See [Cozmo setup](#cozmo-setup-optional) below.
 - **Virtual Cozmo companion (new!)** — no hardware needed: a little animated AI character that lives on your screen, walks around, and chats — works on desktop or phone, right in the browser. Source in [`docs/cozmo/`](docs/cozmo/) — **[open him here](https://doryatir-star.github.io/jarvis-voice/cozmo/)**.
+- **Control a real Cozmo from just an iPhone, no computer (new!)** — [`iphone-cozmo/`](iphone-cozmo/) is a single Python file you paste into an on-device Python app (Pythonista/Pyto) — no Mac, no Xcode, no App Store app of ours. Its wire format is checked byte-for-byte against a real working Cozmo client library in this repo's own test suite.
 
 ## Rover setup (optional)
 
