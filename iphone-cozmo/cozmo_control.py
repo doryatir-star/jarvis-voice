@@ -68,6 +68,9 @@ ID_DRIVE_WHEELS = 0x32
 ID_SET_LIFT_HEIGHT = 0x36
 ID_SET_HEAD_ANGLE = 0x37
 ID_STOP_ALL_MOTORS = 0x3b
+ID_ENABLE_CAMERA = 0x4c
+ID_ENABLE_COLOR_IMAGES = 0x66
+ID_IMAGE_CHUNK = 0xf2
 ID_SET_ORIGIN = 0x45
 ID_SYNC_TIME = 0x4b
 ID_LIGHT_CENTER = 0x03
@@ -82,6 +85,18 @@ MIN_LIFT_HEIGHT_MM = 32.0
 MAX_LIFT_HEIGHT_MM = 92.0
 
 LIGHT_COLORS = {"green": 0x03E0, "red": 0x7C00, "blue": 0x001F, "white": 0x7FFF, "off": 0x0000}
+
+# Camera resolution codes -> (width, height). Only the small ones -- plenty
+# for an AI to recognize what it's looking at, and much faster over Wi-Fi
+# than a full-size frame. Matches pycozmo.camera.RESOLUTIONS' first entries.
+CAMERA_RESOLUTIONS = {
+    0: (16, 16),     # VerificationSnapshot
+    1: (40, 30),     # QQQQVGA
+    2: (80, 60),     # QQQVGA
+    3: (160, 120),   # QQVGA (default used below)
+    4: (320, 240),   # QVGA
+}
+DEFAULT_CAMERA_RESOLUTION = 3
 
 
 def _u16(v):
@@ -195,6 +210,75 @@ def pkt_ping(time_sent_ms, counter):
     return struct.pack("<dLLB", time_sent_ms, counter, 0, 0)
 
 
+def pkt_enable_camera(send_mode=1, resolution=DEFAULT_CAMERA_RESOLUTION):
+    # send_mode: 0=Off, 1=Stream, 2=SingleShot
+    return (PT_COMMAND, ID_ENABLE_CAMERA, struct.pack("<bb", send_mode, resolution))
+
+
+def pkt_enable_color_images(enable=False):
+    return (PT_COMMAND, ID_ENABLE_COLOR_IMAGES, struct.pack("<b", 1 if enable else 0))
+
+
+# ---------- Camera image reconstruction ----------
+# Cozmo streams camera frames in a minimized on-wire format, not a plain
+# JPEG file -- this rebuilds a standard JPEG byte stream from it. Pure
+# Python port of pycozmo.camera.minigray_to_jpeg (which uses numpy); checked
+# byte-for-byte identical to the original before being written here (the
+# original's output has extra trailing zero padding from an over-sized
+# buffer that this version simply omits -- harmless, since JPEG decoders
+# stop at the end-of-image marker either way).
+
+_JPEG_GRAY_HEADER = bytes([
+    0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
+    0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x10, 0x0B, 0x0C, 0x0E, 0x0C, 0x0A, 0x10,
+    0x0E, 0x0D, 0x0E, 0x12, 0x11, 0x10, 0x13, 0x18, 0x28, 0x1A, 0x18, 0x16, 0x16, 0x18, 0x31, 0x23,
+    0x25, 0x1D, 0x28, 0x3A, 0x33, 0x3D, 0x3C, 0x39, 0x33, 0x38, 0x37, 0x40, 0x48, 0x5C, 0x4E, 0x40,
+    0x44, 0x57, 0x45, 0x37, 0x38, 0x50, 0x6D, 0x51, 0x57, 0x5F, 0x62, 0x67, 0x68, 0x67, 0x3E, 0x4D,
+    0x71, 0x79, 0x70, 0x64, 0x78, 0x5C, 0x65, 0x67, 0x63, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x01, 0x28,
+    0x01, 0x90, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0xD2, 0x00, 0x00, 0x01, 0x05, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04,
+    0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x10, 0x00, 0x02, 0x01, 0x03, 0x03, 0x02, 0x04, 0x03,
+    0x05, 0x05, 0x04, 0x04, 0x00, 0x00, 0x01, 0x7D, 0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12,
+    0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xA1, 0x08,
+    0x23, 0x42, 0xB1, 0xC1, 0x15, 0x52, 0xD1, 0xF0, 0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0A, 0x16,
+    0x17, 0x18, 0x19, 0x1A, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+    0x3A, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59,
+    0x5A, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79,
+    0x7A, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8A, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98,
+    0x99, 0x9A, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6,
+    0xB7, 0xB8, 0xB9, 0xBA, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xD2, 0xD3, 0xD4,
+    0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA,
+    0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01,
+    0x00, 0x00, 0x3F, 0x00,
+])
+
+
+def minigray_to_jpeg(minigray, width, height):
+    """Rebuild a normal JPEG byte stream from Cozmo's minimized grayscale
+    on-wire image format. `minigray` includes the leading is-color flag
+    byte, matching pycozmo's own call convention."""
+    buffer_in = minigray
+    curr_len = len(buffer_in)
+    while curr_len > 0 and buffer_in[curr_len - 1] == 0xff:
+        curr_len -= 1
+
+    out = bytearray(_JPEG_GRAY_HEADER)
+    out[0x5e] = (height >> 8) & 0xff
+    out[0x5f] = height & 0xff
+    out[0x60] = (width >> 8) & 0xff
+    out[0x61] = width & 0xff
+
+    for i in range(curr_len - 1):
+        b = buffer_in[i + 1]
+        out.append(b)
+        if b == 0xff:
+            out.append(0)
+
+    out.append(0xff)
+    out.append(0xd9)
+    return bytes(out)
+
+
 # ---------- High-level link ----------
 
 class CozmoLink:
@@ -211,6 +295,12 @@ class CozmoLink:
         self._ping_counter = 0
         self._recv_thread = threading.Thread(target=self._recv_loop, daemon=True)
         self._ping_thread = None
+        self._camera_enabled = False
+        self._image_chunks = {}
+        self._current_image_id = None
+        self._current_chunk_count = None
+        self._latest_jpeg = None
+        self._image_event = threading.Event()
 
     def connect(self, timeout=8.0):
         self._recv_thread.start()
@@ -251,7 +341,7 @@ class CozmoLink:
     def _recv_loop(self):
         while not self._stop:
             try:
-                data, _ = self.sock.recvfrom(2048)
+                data, _ = self.sock.recvfrom(4096)
             except socket.timeout:
                 continue
             except OSError:
@@ -287,10 +377,60 @@ class CozmoLink:
             # too early could otherwise be silently dropped. Runs on a timer
             # so it doesn't block this thread from handling other packets.
             threading.Timer(0.5, self._mark_ready).start()
+        elif pkt_id == ID_IMAGE_CHUNK:
+            self._handle_image_chunk(payload)
 
     def _mark_ready(self):
         self.ready = True
         self.on_log("Cozmo ready!")
+
+    def _handle_image_chunk(self, payload):
+        try:
+            image_id, chunk_debug = struct.unpack_from("<LL", payload, 4)
+            encoding, resolution = struct.unpack_from("<bb", payload, 12)
+            chunk_count, chunk_id = struct.unpack_from("<BB", payload, 14)
+            dlen = struct.unpack_from("<H", payload, 18)[0]
+            data = payload[20:20 + dlen]
+        except struct.error:
+            return
+
+        if chunk_id == 0:
+            self._image_chunks = {0: data}
+            self._current_image_id = image_id
+            self._current_chunk_count = chunk_count
+        elif image_id != self._current_image_id or self._current_image_id is None:
+            return  # chunk belongs to a different/stale image -- ignore it
+        else:
+            self._image_chunks[chunk_id] = data
+
+        if len(self._image_chunks) == self._current_chunk_count:
+            assembled = b"".join(self._image_chunks[i] for i in range(self._current_chunk_count))
+            width, height = CAMERA_RESOLUTIONS.get(resolution, CAMERA_RESOLUTIONS[DEFAULT_CAMERA_RESOLUTION])
+            try:
+                self._latest_jpeg = minigray_to_jpeg(assembled, width, height)
+            except Exception:
+                self._latest_jpeg = None
+            self._image_chunks = {}
+            self._current_image_id = None
+            self._image_event.set()
+
+    def enable_camera(self):
+        """Turns on Cozmo's camera stream (grayscale, to keep frames small
+        and fast over Wi-Fi). Safe to call more than once."""
+        if self._camera_enabled:
+            return
+        self._camera_enabled = True
+        self._send_engine([pkt_enable_camera(send_mode=1, resolution=DEFAULT_CAMERA_RESOLUTION)])
+        self._send_engine([pkt_enable_color_images(enable=False)])
+
+    def capture_image(self, timeout=3.0):
+        """Enables the camera if needed and returns the next full frame as
+        JPEG bytes, or None if none arrived within `timeout` seconds."""
+        self.enable_camera()
+        self._image_event.clear()
+        if self._image_event.wait(timeout):
+            return self._latest_jpeg
+        return None
 
     # ---- High-level commands ----
     def drive(self, direction, speed=100.0, seconds=1.5):
