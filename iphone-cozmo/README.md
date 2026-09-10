@@ -122,6 +122,29 @@ Two things worth knowing:
   costs add up faster than the chat version. Fine to leave running for a
   while to watch him explore; maybe not something to leave on all day.
 
+## Want to control him from a web page instead of typing? Use `cozmo_web.py`
+
+`cozmo_control.py` needs you to type commands into the Python app's
+console. `cozmo_web.py` is different: it runs a small local web server
+directly on your iPhone (still only the standard library — `http.server`
+and `socketserver`, nothing to `pip install`) and serves a touch-friendly
+control page — drive/turn/stop buttons, head and lift controls, light
+colors, a live camera feed, and a text box for the same free-form chat
+`cozmo_control.py` understands ("spin", "tell me a joke", etc.).
+
+Setup:
+1. Save **both** `cozmo_control.py` and `cozmo_web.py` in your Python app
+   (`cozmo_web.py` imports the other one, same as `cozmo_ai.py` does).
+2. Run `cozmo_web.py` instead of the others.
+3. It prints a URL, e.g. `http://172.31.1.2:8080/` — open that in Safari
+   (on the same iPhone, or any other device joined to Cozmo's own Wi-Fi)
+   to get the control page.
+
+Same caveats as every other script here: keep the Python app open and
+your screen on (iOS disconnects Cozmo if it gets backgrounded), and no
+internet is needed or used — the page is served entirely from your iPhone
+over Cozmo's own local Wi-Fi.
+
 ## Why you should trust this more than the native iOS app
 
 Both `cozmo_control.py` and [`ios-cozmo-app/`](../ios-cozmo-app/)
