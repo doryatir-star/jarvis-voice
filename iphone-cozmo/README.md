@@ -129,21 +129,38 @@ console. `cozmo_web.py` is different: it runs a small local web server
 directly on your iPhone (still only the standard library — `http.server`
 and `socketserver`, nothing to `pip install`) and serves a touch-friendly
 control page — drive/turn/stop buttons, head and lift controls, light
-colors, a live camera feed, and a text box for the same free-form chat
-`cozmo_control.py` understands ("spin", "tell me a joke", etc.).
+colors, a live camera feed, a text box for the same free-form chat
+`cozmo_control.py` understands ("spin", "tell me a joke", etc.), **and a
+"Start AI Mode" button** that hands control to Claude (see below).
 
 Setup:
-1. Save **both** `cozmo_control.py` and `cozmo_web.py` in your Python app
-   (`cozmo_web.py` imports the other one, same as `cozmo_ai.py` does).
-2. Run `cozmo_web.py` instead of the others.
-3. It prints a URL, e.g. `http://172.31.1.2:8080/` — open that in Safari
+1. Save `cozmo_control.py`, `cozmo_autonomous.py`, and `cozmo_web.py` in
+   your Python app — `cozmo_web.py` imports both of the others.
+2. If you want the AI Mode button to work (the manual buttons and offline
+   chat work without it), do the `cozmo_ai.py`/`cozmo_autonomous.py` setup
+   too: an Anthropic API key pasted into `cozmo_autonomous.py`'s `API_KEY`
+   line, and your iPhone's cellular data turned on.
+3. Run `cozmo_web.py` instead of the others.
+4. It prints a URL, e.g. `http://172.31.1.2:8080/` — open that in Safari
    (on the same iPhone, or any other device joined to Cozmo's own Wi-Fi)
    to get the control page.
 
 Same caveats as every other script here: keep the Python app open and
-your screen on (iOS disconnects Cozmo if it gets backgrounded), and no
-internet is needed or used — the page is served entirely from your iPhone
-over Cozmo's own local Wi-Fi.
+your screen on (iOS disconnects Cozmo if it gets backgrounded). Manual
+driving and offline chat need no internet — the page itself is served
+entirely from your iPhone over Cozmo's own local Wi-Fi. AI Mode is the one
+exception: each decision it makes is a real call to Claude, so it needs
+cellular data on, same as running `cozmo_autonomous.py` on its own.
+
+### The "Start AI Mode" button — what it actually does
+
+Tapping it starts the exact same loop as running `cozmo_autonomous.py`
+standalone (capture a camera frame, send it to Claude, Claude picks one
+action — drive, turn, look, change lights, or just wait — execute it,
+repeat every few seconds), except it now runs inside `cozmo_web.py`'s
+server and you watch its decisions scroll by in a log box on the page
+instead of a terminal. Tap "Stop AI Mode" to hand control back to the
+manual buttons at any point.
 
 ## Why you should trust this more than the native iOS app
 

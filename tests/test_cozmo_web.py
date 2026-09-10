@@ -7,9 +7,11 @@ import os
 import socketserver
 import sys
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "iphone-cozmo"))
@@ -18,8 +20,9 @@ import cozmo_web as cw
 
 
 class FakeLink:
-    def __init__(self):
+    def __init__(self, image=None):
         self.calls = []
+        self._image = image
 
     def drive(self, direction): self.calls.append(("drive", direction))
     def turn(self, direction): self.calls.append(("turn", direction))
@@ -27,6 +30,7 @@ class FakeLink:
     def head(self, direction): self.calls.append(("head", direction))
     def lift(self, direction): self.calls.append(("lift", direction))
     def lights(self, color): self.calls.append(("lights", color))
+    def capture_image(self, timeout=3.0): return self._image
 
 
 class TestCozmoWebApi(unittest.TestCase):
@@ -135,6 +139,111 @@ class TestCozmoWebApi(unittest.TestCase):
             self.fail("expected an HTTPError")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 400)
+
+
+class TestAiMode(unittest.TestCase):
+    """Tests the /api/ai/* endpoints -- cozmo_autonomous.py's call_claude()
+    is mocked out (no real network call, no API key needed), same as
+    tests/test_cozmo_autonomous.py does for the standalone script."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fake_link = FakeLink()
+        cw.link = cls.fake_link
+        cls.server = socketserver.ThreadingTCPServer(("127.0.0.1", 0), cw.Handler)
+        cls.port = cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        self.fake_link.calls.clear()
+
+    def tearDown(self):
+        # Safety net: make sure no test leaves a background AI loop running
+        # into the next one, even if a test fails before reaching its own
+        # stop+join.
+        cw._ai_stop_event.set()
+        if cw._ai_thread is not None:
+            cw._ai_thread.join(timeout=2)
+        cw._ai_stop_event.clear()
+        with cw._ai_log_lock:
+            cw._ai_log.clear()
+
+    def _url(self, path):
+        return f"http://127.0.0.1:{self.port}{path}"
+
+    def _post(self, path):
+        req = urllib.request.Request(self._url(path), data=b"{}", method="POST",
+                                      headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read().decode("utf-8"))
+
+    def _get(self, path):
+        with urllib.request.urlopen(self._url(path), timeout=5) as resp:
+            return resp.status, json.loads(resp.read().decode("utf-8"))
+
+    def test_start_refuses_without_a_real_api_key(self):
+        with patch.object(cw.ca, "API_KEY", "PASTE_YOUR_KEY_HERE"):
+            status, data = self._post("/api/ai/start")
+        self.assertEqual(status, 400)
+        self.assertFalse(data["ok"])
+        self.assertFalse(cw._ai_running)
+
+    def test_start_runs_the_claude_loop_and_executes_actions(self):
+        tool_response = {"content": [
+            {"type": "text", "text": "Ooh, something to look at!"},
+            {"type": "tool_use", "id": "t1", "name": "turn", "input": {"direction": "left"}},
+        ]}
+        # Keep the mock active for the whole start-wait-stop sequence -- the
+        # background loop must never call the real (network) call_claude.
+        with patch.object(cw.ca, "API_KEY", "sk-fake"), \
+             patch.object(cw.ca, "TICK_SECONDS", 0.02), \
+             patch.object(cw.ca, "call_claude", return_value=tool_response):
+            status, data = self._post("/api/ai/start")
+            self.assertEqual(status, 200)
+            self.assertTrue(data["ok"])
+
+            deadline = time.time() + 2
+            while time.time() < deadline and not self.fake_link.calls:
+                time.sleep(0.02)
+
+            self.assertIn(("turn", "left"), self.fake_link.calls)
+            status, log_data = self._get("/api/ai/log")
+            self.assertTrue(log_data["running"])
+            self.assertTrue(any("Turning left" in line for line in log_data["lines"]))
+
+            self._post("/api/ai/stop")
+            cw._ai_thread.join(timeout=2)
+
+        self.assertFalse(cw._ai_running)
+
+    def test_start_twice_does_not_spawn_a_second_loop(self):
+        wait_response = {"content": [{"type": "tool_use", "id": "t1", "name": "wait", "input": {}}]}
+        with patch.object(cw.ca, "API_KEY", "sk-fake"), \
+             patch.object(cw.ca, "TICK_SECONDS", 0.02), \
+             patch.object(cw.ca, "call_claude", return_value=wait_response):
+            self._post("/api/ai/start")
+            first_thread = cw._ai_thread
+            status, data = self._post("/api/ai/start")
+            self.assertEqual(status, 200)
+            self.assertIn("already running", data["reply"])
+            self.assertIs(cw._ai_thread, first_thread)
+
+            self._post("/api/ai/stop")
+            cw._ai_thread.join(timeout=2)
+
+    def test_stop_when_not_running_says_so(self):
+        status, data = self._post("/api/ai/stop")
+        self.assertEqual(status, 200)
+        self.assertIn("isn't running", data["reply"])
 
 
 if __name__ == "__main__":

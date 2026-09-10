@@ -1,32 +1,43 @@
-"""Control Cozmo from a web page in Safari -- no typing commands, just tap
-buttons, with a live camera feed. Runs a small local web server directly on
-your iPhone (via Pythonista/Pyto/a-Shell) on top of cozmo_control.py's
-CozmoLink, using ONLY the Python standard library (http.server,
-socketserver, json) -- same zero-dependency approach as every other script
-in this folder, nothing to `pip install`.
+"""Control Cozmo from a web page in Safari -- tap buttons for manual driving,
+or flip on "Autonomous AI mode" and let Claude decide what he does next
+using his real camera, with a live camera feed either way. Runs a small
+local web server directly on your iPhone (via Pythonista/Pyto/a-Shell) on
+top of cozmo_control.py's CozmoLink and cozmo_autonomous.py's Claude-vision
+loop, using ONLY the Python standard library (http.server, socketserver,
+json) -- same zero-dependency approach as every other script in this
+folder, nothing to `pip install`.
 
 =====================================================================
-SETUP (same as cozmo_control.py, plus one extra step)
+SETUP (same as cozmo_control.py, plus two extra files)
 =====================================================================
 1. Everything from cozmo_control.py's setup: a Python app (Pythonista 3,
    Pyto, or a-Shell), Cozmo awake on his charger, your iPhone's Wi-Fi
    joined to Cozmo's own network.
-2. cozmo_control.py must be saved as its own file in the same folder --
-   this file imports it (paste/save both, same as cozmo_ai.py needs it).
-3. Run this file instead of cozmo_control.py.
-4. It prints a URL like http://172.31.1.2:8080/ -- open that in Safari
+2. cozmo_control.py AND cozmo_autonomous.py must both be saved as their
+   own files in the same folder -- this file imports both.
+3. If you want to use "Autonomous AI mode" (the manual buttons and offline
+   chat work without it): open cozmo_autonomous.py and paste your
+   Anthropic API key into its API_KEY line near the top, or set the
+   ANTHROPIC_API_KEY environment variable. See cozmo_autonomous.py's own
+   docstring for why this needs a real (paid, pay-as-you-go) API key and
+   your iPhone's cellular data turned on.
+4. Run this file instead of the others.
+5. It prints a URL like http://172.31.1.2:8080/ -- open that in Safari
    (on the same iPhone, or any other device joined to Cozmo's Wi-Fi) to
    get the control page.
 
-No internet is needed for the page itself -- it's served entirely from
-your iPhone, and all its CSS/JS is inline in this file (Cozmo's Wi-Fi has
-no internet access anyway, same caveat as every other script here).
+No internet is needed for the page itself, or for manual driving/offline
+chat -- those are served entirely from your iPhone (Cozmo's Wi-Fi has no
+internet access anyway). Autonomous AI mode is the one exception: each
+decision it makes is a real call to Claude, which needs cellular data on
+(same as cozmo_autonomous.py run standalone).
 
 Keep the Python app open and your screen on while this runs -- iOS
 suspends backgrounded apps, which stops the keep-alive ping Cozmo expects
 and disconnects him, same as every other script in this folder.
 =====================================================================
 """
+import base64
 import json
 import os
 import socket
@@ -41,6 +52,7 @@ except NameError:
     _THIS_DIR = os.getcwd()
 sys.path.insert(0, _THIS_DIR)
 from cozmo_control import CozmoLink, ROBOT_ADDR, think
+import cozmo_autonomous as ca
 
 HOST = "0.0.0.0"
 PORT = 8080
@@ -49,6 +61,20 @@ link = None
 _camera_stop = False
 _latest_jpeg = None
 _latest_jpeg_lock = threading.Lock()
+
+# ---- Autonomous AI mode -- same Claude-vision loop as cozmo_autonomous.py,
+# started/stopped from the web page instead of running as its own script.
+_ai_thread = None
+_ai_stop_event = threading.Event()
+_ai_running = False
+_ai_log = []
+_ai_log_lock = threading.Lock()
+
+
+def _ai_log_line(text):
+    with _ai_log_lock:
+        _ai_log.append(text)
+        del _ai_log[:-40]
 
 
 def _local_ip():
@@ -75,10 +101,71 @@ def _camera_loop():
                 _latest_jpeg = jpeg
 
 
+def _ai_loop():
+    global _ai_running
+    _ai_running = True
+    _ai_log_line("Autonomous AI mode started -- Cozmo is now deciding for himself.")
+    while not _ai_stop_event.is_set():
+        try:
+            jpeg = link.capture_image(timeout=3.0)
+            content = []
+            if jpeg:
+                content.append({
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": "image/jpeg",
+                               "data": base64.b64encode(jpeg).decode("ascii")},
+                })
+                content.append({"type": "text", "text": "This is what you see right now. What do you do?"})
+            else:
+                content.append({"type": "text", "text":
+                                 "Your camera frame didn't arrive in time this turn. What do you do?"})
+
+            response = ca.call_claude([{"role": "user", "content": content}])
+            thought = None
+            action_desc = None
+            for block in response.get("content", []):
+                if block.get("type") == "text" and block["text"].strip():
+                    thought = block["text"].strip()
+                elif block.get("type") == "tool_use":
+                    action_desc = ca.run_tool(link, block["name"], block.get("input", {}))
+            _ai_log_line(" -- ".join(x for x in (action_desc, thought) if x) or "(no action)")
+        except RuntimeError as e:
+            _ai_log_line(str(e))
+        _ai_stop_event.wait(ca.TICK_SECONDS)
+    _ai_running = False
+    _ai_log_line("Autonomous AI mode stopped.")
+
+
+def _ai_start():
+    global _ai_thread
+    if _ai_running:
+        return "Autonomous AI mode is already running."
+    if not ca.API_KEY or ca.API_KEY == "PASTE_YOUR_KEY_HERE":
+        raise ValueError(
+            "No Anthropic API key set -- edit cozmo_autonomous.py's API_KEY "
+            "near the top (get one at https://console.anthropic.com), or set "
+            "the ANTHROPIC_API_KEY environment variable.")
+    _ai_stop_event.clear()
+    _ai_thread = threading.Thread(target=_ai_loop, daemon=True)
+    _ai_thread.start()
+    return "Starting autonomous AI mode..."
+
+
+def _ai_stop():
+    if not _ai_running:
+        return "Autonomous AI mode isn't running."
+    _ai_stop_event.set()
+    return "Stopping autonomous AI mode..."
+
+
 def _dispatch(path, data):
     """Runs one API action against the connected Cozmo and returns a reply
     string. Raises KeyError/ValueError on bad input -- the handler below
     turns that into a 400 response."""
+    if path == "/api/ai/start":
+        return _ai_start()
+    if path == "/api/ai/stop":
+        return _ai_stop()
     if path == "/api/drive":
         link.drive(data["direction"])
         return f"Driving {data['direction']}."
@@ -117,6 +204,10 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/":
             self._send_bytes(PAGE.encode("utf-8"), "text/html; charset=utf-8")
+        elif path == "/api/ai/log":
+            with _ai_log_lock:
+                lines = list(_ai_log)
+            self._send_json({"ok": True, "running": _ai_running, "lines": lines})
         elif path == "/api/camera":
             with _latest_jpeg_lock:
                 jpeg = _latest_jpeg
@@ -205,12 +296,25 @@ PAGE = """<!doctype html>
   }
   .chat button { flex: 0 0 auto; padding: 12px 18px; background: #2a5a8a; }
   .label { font-size: 12px; color: #999; text-align: center; margin: -4px 0 2px; }
+  #aiBtn { background: #2a5a2a; }
+  #aiBtn.running { background: #7a2020; }
+  .log {
+    height: 90px; overflow-y: auto; padding: 8px 10px; border-radius: 10px;
+    background: #1c1f24; border: 1px solid #333; color: #aab; font-size: 12px;
+    font-family: ui-monospace, monospace; white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
 <h1>Cozmo Control</h1>
 <img id="cam" src="/api/camera" alt="Cozmo's camera feed">
 <div id="status">Connecting...</div>
+
+<div class="panel">
+  <div class="label">Autonomous AI -- Cozmo decides for himself, using his camera and Claude</div>
+  <div class="row"><button id="aiBtn" onclick="toggleAi()">Start AI Mode</button></div>
+  <div id="aiLog" class="log"></div>
+</div>
 
 <div class="panel">
   <div class="label">Drive</div>
@@ -288,6 +392,39 @@ setInterval(() => {
   document.getElementById('cam').src = '/api/camera?t=' + Date.now();
 }, 1200);
 
+let aiRunning = false;
+
+async function toggleAi() {
+  const path = aiRunning ? '/api/ai/stop' : '/api/ai/start';
+  try {
+    const res = await fetch(path, {method: 'POST'});
+    const data = await res.json();
+    setStatus(data.ok ? data.reply : ('Error: ' + data.error));
+  } catch (e) {
+    setStatus('Connection error -- is the server still running?');
+  }
+  pollAiLog();
+}
+
+async function pollAiLog() {
+  try {
+    const res = await fetch('/api/ai/log');
+    const data = await res.json();
+    aiRunning = data.running;
+    const btn = document.getElementById('aiBtn');
+    btn.textContent = aiRunning ? 'Stop AI Mode' : 'Start AI Mode';
+    btn.classList.toggle('running', aiRunning);
+    const box = document.getElementById('aiLog');
+    box.textContent = data.lines.join('\n');
+    box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    // server not reachable this tick -- next poll will retry
+  }
+}
+
+setInterval(pollAiLog, 3000);
+pollAiLog();
+
 setStatus('Ready.');
 </script>
 </body>
@@ -327,6 +464,7 @@ def main():
         pass
     finally:
         _camera_stop = True
+        _ai_stop_event.set()
         server.shutdown()
         server.server_close()
         link.disconnect()
