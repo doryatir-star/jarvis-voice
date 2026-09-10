@@ -246,6 +246,16 @@ class Handler(BaseHTTPRequestHandler):
         pass  # keep the on-device console readable -- comment out to debug
 
 
+class _Server(socketserver.ThreadingTCPServer):
+    # Must be a class attribute, not set on the instance after construction
+    # -- ThreadingTCPServer.__init__ binds the socket immediately, so
+    # setting this afterward is too late to have any effect. Without it, a
+    # restart right after stopping the script fails with "Address already
+    # in use" until the OS lets go of the port on its own (can take a
+    # minute or two).
+    allow_reuse_address = True
+
+
 PAGE = """<!doctype html>
 <html>
 <head>
@@ -446,8 +456,7 @@ def main():
 
     threading.Thread(target=_camera_loop, daemon=True).start()
 
-    server = socketserver.ThreadingTCPServer((HOST, PORT), Handler)
-    server.allow_reuse_address = True
+    server = _Server((HOST, PORT), Handler)
 
     print()
     print("Cozmo is ready! Open this page in Safari:")
