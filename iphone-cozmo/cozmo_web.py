@@ -456,11 +456,28 @@ def main():
 
     threading.Thread(target=_camera_loop, daemon=True).start()
 
-    server = _Server((HOST, PORT), Handler)
+    # A port left over from a previous run that didn't fully release (a
+    # background thread outliving a stopped script is common in on-device
+    # Python apps) would otherwise crash this with "Address already in
+    # use" -- try nearby ports instead of just giving up on the first one.
+    server = None
+    port = PORT
+    for port in range(PORT, PORT + 10):
+        try:
+            server = _Server((HOST, port), Handler)
+            break
+        except OSError:
+            continue
+    if server is None:
+        print(f"Couldn't bind to any port in {PORT}-{PORT + 9} -- they all "
+              f"seem to be in use. Try fully force-quitting this app "
+              f"(swipe it away, not just switching apps) and running again.")
+        link.disconnect()
+        return
 
     print()
     print("Cozmo is ready! Open this page in Safari:")
-    print(f"  http://{_local_ip()}:{PORT}/")
+    print(f"  http://{_local_ip()}:{port}/")
     print("(Works from any device joined to Cozmo's own Wi-Fi, not just this "
           "iPhone -- but keep THIS app open and its screen on, since it's the "
           "one holding the Wi-Fi connection to Cozmo.)")
