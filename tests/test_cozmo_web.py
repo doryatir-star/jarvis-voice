@@ -4,7 +4,10 @@ Cozmo connection, and drives it with real HTTP requests via urllib -- no
 network access, no API key, no real robot needed."""
 import json
 import os
+import re
+import shutil
 import socketserver
+import subprocess
 import sys
 import threading
 import time
@@ -70,6 +73,22 @@ class TestCozmoWebApi(unittest.TestCase):
             body = resp.read().decode("utf-8")
         self.assertIn("<html", body)
         self.assertIn("Cozmo Control", body)
+
+    @unittest.skipUnless(shutil.which("node"), "node isn't installed")
+    def test_the_pages_inline_javascript_is_syntactically_valid(self):
+        # Regression test: PAGE is a plain (non-raw) Python triple-quoted
+        # string, so a literal like '\n' meant for the JS is silently
+        # unescaped by Python into an actual newline character *before* it
+        # ever reaches the browser -- turning a one-line JS string literal
+        # into an unterminated one and crashing the whole script (which
+        # then never reaches setStatus('Ready.'), leaving the page stuck
+        # showing "Connecting..." forever with no visible error anywhere
+        # except the browser console). Escaping it as '\\n' in this file's
+        # source is what keeps the JS itself correct.
+        script = re.search(r"<script>(.*?)</script>", cw.PAGE, re.S).group(1)
+        result = subprocess.run(["node", "--check", "-"], input=script,
+                                 capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_camera_returns_503_before_any_frame_arrives(self):
         try:

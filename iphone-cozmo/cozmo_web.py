@@ -425,7 +425,7 @@ async function pollAiLog() {
     btn.textContent = aiRunning ? 'Stop AI Mode' : 'Start AI Mode';
     btn.classList.toggle('running', aiRunning);
     const box = document.getElementById('aiLog');
-    box.textContent = data.lines.join('\n');
+    box.textContent = data.lines.join('\\n');
     box.scrollTop = box.scrollHeight;
   } catch (e) {
     // server not reachable this tick -- next poll will retry
