@@ -40,7 +40,15 @@ import sys
 import urllib.error
 import urllib.request
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # No __file__ -- running inside a notebook-style cell (Jupyter,
+    # Carnets, etc.) rather than as a plain script. Fall back to the
+    # current working directory, which is where cozmo_control.py should
+    # be if it's been saved alongside this file.
+    _THIS_DIR = os.getcwd()
+sys.path.insert(0, _THIS_DIR)
 from cozmo_control import CozmoLink
 
 # ===================================================================
