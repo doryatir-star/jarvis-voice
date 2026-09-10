@@ -96,6 +96,32 @@ iOS Python app can install (iOS blocks apps from loading unsigned native
 code, no exceptions). The request format matches Anthropic's public API
 documentation exactly; see the module's own docstring for details.
 
+## Want him to act completely on his own? Use `cozmo_autonomous.py`
+
+`cozmo_ai.py` still waits for you to type something each turn. This one
+doesn't wait for you at all: once running, it repeats forever on its own
+— capture a frame from Cozmo's camera, show it to Claude, Claude decides
+on one thing to do (move, turn, look around, change his lights) or just
+watch, then it waits a few seconds and does it again. You just watch;
+there's nothing to type.
+
+Setup is the same as `cozmo_ai.py` (API key + cellular data on), plus you
+need `cozmo_control.py` in the same folder (this file imports it, same as
+`cozmo_ai.py` does). Run `cozmo_autonomous.py` instead of the others.
+Press Ctrl+C (or however your Python app stops a running script) to end
+it — there's no prompt to type "quit" into, since it never asks you
+anything.
+
+Two things worth knowing:
+- **Camera images are grayscale, not color** — keeps frames small and
+  fast over Wi-Fi/cellular. Turning Cozmo's on-wire image format into a
+  normal JPEG Claude can actually look at was checked byte-for-byte
+  against `pycozmo`'s own camera-decoding code before being written —
+  see [`tests/test_cozmo_camera.py`](../tests/test_cozmo_camera.py).
+- **This calls Claude with an image every ~8 seconds while running** —
+  costs add up faster than the chat version. Fine to leave running for a
+  while to watch him explore; maybe not something to leave on all day.
+
 ## Why you should trust this more than the native iOS app
 
 Both `cozmo_control.py` and [`ios-cozmo-app/`](../ios-cozmo-app/)
