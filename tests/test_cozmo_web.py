@@ -33,7 +33,9 @@ class FakeLink:
     def head(self, direction): self.calls.append(("head", direction))
     def lift(self, direction): self.calls.append(("lift", direction))
     def lights(self, color): self.calls.append(("lights", color))
-    def capture_image(self, timeout=3.0): return self._image
+    def capture_image(self, timeout=3.0):
+        self.calls.append(("capture_image",))
+        return self._image
 
 
 class TestCozmoWebApi(unittest.TestCase):
@@ -243,6 +245,48 @@ class TestAiMode(unittest.TestCase):
             cw._ai_thread.join(timeout=2)
 
         self.assertFalse(cw._ai_running)
+
+    def test_ai_loop_reads_the_shared_camera_frame_instead_of_capturing_its_own(self):
+        # Regression test: the AI loop used to call link.capture_image()
+        # itself, on the same connection _camera_loop() (feeding the page's
+        # live preview) was already calling continuously in another
+        # thread. capture_image() isn't safe to call from two threads at
+        # once -- both wait on the same "next frame arrived" event, so
+        # whichever thread happens to clear() it first steals every frame
+        # from the other -- and in practice this starved the AI loop,
+        # which kept reporting "no frame" even while the page's own
+        # preview was updating fine. The fix: read the same _latest_jpeg
+        # _camera_loop() already maintains instead of capturing again.
+        with cw._latest_jpeg_lock:
+            cw._latest_jpeg = b"\xff\xd8sharedframe\xff\xd9"
+
+        captured = {}
+
+        def fake_call_claude(messages):
+            captured["messages"] = messages
+            return {"content": [{"type": "tool_use", "id": "t1", "name": "wait", "input": {}}]}
+
+        try:
+            with patch.object(cw.ca, "API_KEY", "sk-fake"), \
+                 patch.object(cw.ca, "TICK_SECONDS", 0.02), \
+                 patch.object(cw.ca, "call_claude", side_effect=fake_call_claude):
+                self._post("/api/ai/start")
+
+                deadline = time.time() + 2
+                while time.time() < deadline and "messages" not in captured:
+                    time.sleep(0.02)
+
+                self._post("/api/ai/stop")
+                cw._ai_thread.join(timeout=2)
+        finally:
+            with cw._latest_jpeg_lock:
+                cw._latest_jpeg = None
+
+        self.assertNotIn(("capture_image",), self.fake_link.calls)
+        content = captured["messages"][0]["content"]
+        image_block = next(b for b in content if b["type"] == "image")
+        import base64
+        self.assertEqual(base64.b64decode(image_block["source"]["data"]), b"\xff\xd8sharedframe\xff\xd9")
 
     def test_start_twice_does_not_spawn_a_second_loop(self):
         wait_response = {"content": [{"type": "tool_use", "id": "t1", "name": "wait", "input": {}}]}

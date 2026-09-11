@@ -107,7 +107,15 @@ def _ai_loop():
     _ai_log_line("Autonomous AI mode started -- Cozmo is now deciding for himself.")
     while not _ai_stop_event.is_set():
         try:
-            jpeg = link.capture_image(timeout=3.0)
+            # Read the frame _camera_loop() is already continuously
+            # capturing for the page's live preview, instead of calling
+            # link.capture_image() again here -- that method isn't safe to
+            # call from two threads at once (both would fight over the
+            # same "wait for the next frame" event), which was starving
+            # this loop of frames even while the page's own preview kept
+            # updating fine.
+            with _latest_jpeg_lock:
+                jpeg = _latest_jpeg
             content = []
             if jpeg:
                 content.append({
