@@ -1,8 +1,8 @@
 """Cozmo Control -- EVERYTHING IN ONE FILE. No other files needed.
 
-Just open this one file in VS Code and press the Run button (the triangle
-in the top-right corner). Nothing to install, nothing to `pip install` --
-this uses only Python's standard library.
+JUST DOUBLE-CLICK THIS FILE to start it. (If Windows asks what to open it
+with, choose Python.) You can also open it in VS Code and press Run.
+Nothing to `pip install` -- this uses only Python's standard library.
 
 =====================================================================
 WHAT IT DOES
@@ -56,6 +56,16 @@ none. The only part that still wants internet is the speech recognition
 in the browser, which is Chrome's.
 
 =====================================================================
+IF YOU WANT A REAL Cozmo.exe
+=====================================================================
+Open Command Prompt in this folder and run these two lines:
+    pip install pyinstaller
+    pyinstaller --onefile --console --name Cozmo cozmo_all_in_one.py
+You'll get dist\\Cozmo.exe, which runs on its own without Python.
+(An .exe has to be built on Windows, which is why you build it rather
+than being handed one.)
+
+=====================================================================
 IF THE CAMERA STAYS BLACK
 =====================================================================
 This file checks the camera automatically at startup and tells you what
@@ -76,6 +86,7 @@ import struct
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler
@@ -1992,4 +2003,20 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Double-clicking this file opens a console window that closes the
+    # instant the program ends -- including when it ends because of a
+    # crash, which would otherwise make the error impossible to read.
+    # Holding the window open here is what lets this file be run by
+    # double-clicking it, with no .bat launcher needed.
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        print()
+        print("Cozmo stopped because of the error above.")
+    finally:
+        if os.name == "nt":
+            try:
+                input("\nPress Enter to close this window...")
+            except EOFError:
+                pass
