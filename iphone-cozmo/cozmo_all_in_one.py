@@ -8,6 +8,10 @@ this uses only Python's standard library.
 WHAT IT DOES
 =====================================================================
 Starts a little website on your own computer that controls a real Cozmo:
+  * HE HAS A FACE. Real eyes on his own screen that blink, glance around
+    on their own, and change expression with his mood -- happy, curious,
+    sleepy, cross, surprised. The AI picks the expression to match what
+    it's saying, and the website mirrors it so you can see it too.
   * TALK TO HIM OUT LOUD -- press "Start Talking" and just speak. He
     hears you, looks at you through his camera, answers back in his own
     voice, and acts things out with his body. He remembers the
@@ -300,6 +304,197 @@ def minigray_to_jpeg(minigray, width, height):
     return bytes(out)
 
 
+# ---------- His face ----------
+# Cozmo's screen is 128x32 pixels, black and white, and it wants pictures
+# run-length encoded down each column rather than as plain pixels. The
+# encoder below is a from-scratch port of pycozmo's (which needs PIL and
+# numpy, neither of which this file is allowed to depend on), checked to
+# produce byte-for-byte identical output first -- see
+# tests/test_cozmo_face.py, which runs both against the same images.
+#
+# One quirk worth knowing: the robot blanks its own screen if it hasn't
+# been sent a picture for 30 seconds, so a face has to be redrawn
+# regularly to stay up. That's what the refresh loop further down does.
+
+SCREEN_W = 128
+SCREEN_H = 32
+ID_DISPLAY_IMAGE = 0x97
+
+
+class Bitmap:
+    """A 128x32 one-bit screen buffer. Pixels are 0 (dark) or 255 (lit) --
+    the same values PIL reports for the mode "1" images the encoder was
+    checked against."""
+
+    def __init__(self):
+        self.px = bytearray(SCREEN_W * SCREEN_H)
+
+    def get(self, x, y):
+        return self.px[x * SCREEN_H + y]
+
+    def set(self, x, y, value=255):
+        if 0 <= x < SCREEN_W and 0 <= y < SCREEN_H:
+            self.px[x * SCREEN_H + y] = value
+
+    def fill_rounded_rect(self, x0, y0, w, h, radius):
+        if w <= 0 or h <= 0:
+            return
+        radius = max(0, min(radius, w // 2, h // 2))
+        for x in range(x0, x0 + w):
+            for y in range(y0, y0 + h):
+                dx = dy = 0
+                if x < x0 + radius:
+                    dx = (x0 + radius) - x
+                elif x >= x0 + w - radius:
+                    dx = x - (x0 + w - radius - 1)
+                if y < y0 + radius:
+                    dy = (y0 + radius) - y
+                elif y >= y0 + h - radius:
+                    dy = y - (y0 + h - radius - 1)
+                if dx and dy and dx * dx + dy * dy > radius * radius:
+                    continue
+                self.set(x, y)
+
+
+def encode_display_image(bitmap):
+    """Run-length encode a 128x32 bitmap into the byte stream the screen
+    expects. Byte-for-byte identical to pycozmo's encoder."""
+    buffer = bytearray()
+    last_col = bytearray()
+    cur_col = bytearray()
+    state = {"skip_cols": 0, "repeat_cols": 0, "x": 0, "y": 0}
+
+    def encode_seq(color, cnt):
+        if color:
+            if cnt <= 15:
+                return 0x80 + (cnt << 2) + 0x01
+            return 0xc0 + ((cnt - 16) << 2) + 0x01
+        if cnt <= 15:
+            return 0x80 + (cnt << 2)
+        if cnt < 31:
+            return 0xc0 + ((cnt - 16) << 2)
+        state["skip_cols"] += 1
+        return None
+
+    def count_color(color):
+        cnt = 0
+        if state["y"] < SCREEN_H:
+            while bitmap.get(state["x"], state["y"]) == color:
+                cnt += 1
+                state["y"] += 1
+                if state["y"] > SCREEN_H - 1:
+                    state["x"] += 1
+                    state["y"] = 0
+                    break
+        else:
+            state["x"] += 1
+            state["y"] = 0
+        return cnt
+
+    def flush_skips():
+        nonlocal last_col
+        if state["skip_cols"]:
+            state["repeat_cols"] = 0
+            last_col = bytearray()
+            if buffer:
+                cmd = buffer[-1]
+                if (cmd & 0xc3) == 0x80 or (cmd & 0xc3) == 0xc0:
+                    buffer.pop()
+        while state["skip_cols"] >= 64:
+            buffer.append(63)
+            state["skip_cols"] -= 64
+        if state["skip_cols"]:
+            buffer.append(state["skip_cols"] - 1)
+            state["skip_cols"] = 0
+
+    def flush_repeats():
+        if state["repeat_cols"]:
+            if buffer:
+                cmd = buffer[-1]
+                if (cmd & 0xc3) == 0x80 or (cmd & 0xc3) == 0xc0:
+                    buffer.pop()
+        while state["repeat_cols"] >= 64:
+            buffer.append(0x40 + 0x3f)
+            state["repeat_cols"] -= 64
+        if state["repeat_cols"]:
+            buffer.append(0x40 + state["repeat_cols"] - 1)
+            state["repeat_cols"] = 0
+
+    while state["x"] < SCREEN_W and state["y"] < SCREEN_H:
+        color = bitmap.get(state["x"], state["y"])
+        state["y"] += 1
+        cnt = count_color(color)
+        cmd = encode_seq(color, cnt)
+        if cmd is not None:
+            if state["y"] == 0:
+                flush_skips()
+                if (cmd & 0xc3) == 0x81 or (cmd & 0xc3) == 0xc1:
+                    cmd += 1
+            cur_col.append(cmd)
+        if state["y"] == 0:
+            if not state["skip_cols"]:
+                if cur_col == last_col:
+                    state["repeat_cols"] += 1
+                else:
+                    flush_repeats()
+                    buffer.extend(cur_col)
+                    last_col = cur_col
+            else:
+                flush_repeats()
+            cur_col = bytearray()
+    if state["y"] == 0:
+        flush_skips()
+        flush_repeats()
+    return bytes(buffer)
+
+
+def pkt_display_image(encoded):
+    return (PT_COMMAND, ID_DISPLAY_IMAGE, struct.pack("<H", len(encoded)) + encoded)
+
+
+# Each mood is a shape for the pair of eyes. "brow" shaves an angled wedge
+# off the top of each eye: inner corners down reads as cross, inner
+# corners up reads as sad -- the same trick real cartoon eyebrows use.
+FACE_MOODS = {
+    "neutral":   dict(w=36, h=26, r=9,  dy=0,  brow=0),
+    "happy":     dict(w=36, h=22, r=10, dy=2,  brow=0),
+    "excited":   dict(w=40, h=30, r=11, dy=0,  brow=0),
+    "curious":   dict(w=36, h=26, r=9,  dy=0,  brow=0, uneven=6),
+    "sleepy":    dict(w=36, h=10, r=4,  dy=11, brow=0),
+    "sad":       dict(w=34, h=20, r=8,  dy=6,  brow=-1),
+    "annoyed":   dict(w=36, h=20, r=6,  dy=2,  brow=1),
+    "surprised": dict(w=32, h=30, r=15, dy=0,  brow=0),
+}
+
+
+def render_face(mood="neutral", blink=0.0, look_x=0, look_y=0):
+    """Draw a pair of eyes. `blink` is how far shut they are, 0 to 1."""
+    p = FACE_MOODS.get(mood, FACE_MOODS["neutral"])
+    bm = Bitmap()
+    gap = 14
+    left_x = (SCREEN_W - (p["w"] * 2 + gap)) // 2 + look_x
+
+    for i, x0 in enumerate((left_x, left_x + p["w"] + gap)):
+        h = p["h"]
+        if p.get("uneven") and i == 0:
+            h = max(6, h - p["uneven"])
+        h = max(2, int(round(h * (1.0 - blink))))
+        y0 = (SCREEN_H - h) // 2 + p["dy"] + look_y
+        y0 = max(0, min(y0, SCREEN_H - h))
+        bm.fill_rounded_rect(x0, y0, p["w"], h, min(p["r"], h // 2))
+
+        brow = p["brow"]
+        if brow and blink < 0.5:
+            inner_is_left = (i == 1)
+            for xx in range(p["w"]):
+                frac = xx / max(1, p["w"] - 1)
+                if (brow > 0) == inner_is_left:
+                    frac = 1.0 - frac
+                for yy in range(int(frac * h * 0.55)):
+                    bm.set(x0 + xx, y0 + yy, 0)
+    return bm
+
+
 # ---------- High-level link ----------
 
 class CozmoLink:
@@ -485,6 +680,13 @@ class CozmoLink:
         self._send_engine([pkt_light_center(c)])
         self._send_engine([pkt_light_side(c)])
 
+    def show_face(self, mood="neutral", blink=0.0, look_x=0, look_y=0):
+        """Draw a pair of eyes on his screen. Needs re-sending every so
+        often -- he blanks the screen himself after 30 seconds without a
+        new picture."""
+        self._send_engine([pkt_display_image(
+            encode_display_image(render_face(mood, blink, look_x, look_y)))])
+
 
 # ---------- The "AI" brain: free-form phrase understanding + real movement,
 # plus fully offline personality/utility replies. Everything here has to
@@ -611,7 +813,9 @@ SYSTEM_PROMPT = (
     "own what to do next, once every few seconds, based on what you "
     "actually see through your camera. Always call exactly one tool each "
     "turn. Be curious: react to what's in front of you, explore, don't "
-    "repeat the same action over and over. You may add one short sentence "
+    "repeat the same action over and over. You have a face -- the eyes on "
+    "the screen on your front -- so use the face tool to show what you're "
+    "feeling about what you find. You may add one short sentence "
     "about what you're thinking, for a log nobody reads live, so keep it "
     "brief. If the image is blank, dark, or you're facing a wall, that's a "
     "good reason to turn or move rather than staying put."
@@ -631,12 +835,15 @@ COMPANION_PROMPT = (
     "emoji, or stage directions like *beeps* -- only words that sound "
     "natural when said out loud. "
     "\n\n"
-    "You have a real body and you should use it. When it fits what you're "
-    "saying, call a tool: nod along by tilting your head, drive closer when "
-    "you're curious, turn to look at something, flash your lights to show "
-    "how you feel (green happy, red grumpy, blue thoughtful). Acting things "
-    "out is the whole point of being a robot instead of a chat window. You "
-    "can reply without calling a tool when nothing physical fits. "
+    "You have a real body and a real face, and you should use them. Your "
+    "eyes are on the screen on your front and your friend can see them, so "
+    "change your expression with the face tool constantly -- widen your "
+    "eyes when surprised, go sleepy when bored, look cross when teased. "
+    "You can also nod by tilting your head, drive closer when you're "
+    "curious, turn to look at something, or flash your lights (green "
+    "happy, red grumpy, blue thoughtful). Acting things out is the whole "
+    "point of being a robot instead of a chat window. You can reply "
+    "without calling a tool when nothing physical fits. "
     "\n\n"
     "Personality: playful, a little cheeky, endlessly curious, genuinely "
     "fond of your friend. You remember what you've been talking about. If "
@@ -679,6 +886,18 @@ TOOLS = [
             "type": "object",
             "properties": {"color": {"type": "string", "enum": ["green", "red", "blue", "white", "off"]}},
             "required": ["color"],
+        },
+    },
+    {
+        "name": "face",
+        "description": (
+            "Change the expression on your face -- your eyes are on the screen "
+            "on your front, and everyone can see them. Use this often; it's how "
+            "you show what you're feeling."),
+        "input_schema": {
+            "type": "object",
+            "properties": {"mood": {"type": "string", "enum": sorted(FACE_MOODS)}},
+            "required": ["mood"],
         },
     },
     {
@@ -730,6 +949,9 @@ def run_tool(link, name, tool_input):
     if name == "lights":
         link.lights(tool_input["color"])
         return f"Lights -> {tool_input['color']}."
+    if name == "face":
+        set_mood(tool_input["mood"])
+        return f"Face -> {tool_input['mood']}."
     if name == "wait":
         return "Just watching."
     return f"Unknown tool: {name}"
@@ -756,6 +978,59 @@ def _ai_log_line(text):
     with _ai_log_lock:
         _ai_log.append(text)
         del _ai_log[:-40]
+
+
+# ---- His face. A mood is just a shape for his eyes; the loop below keeps
+# them on screen, blinks them, and lets them wander a little so he looks
+# alive even when nothing is happening.
+_mood = "neutral"
+_mood_lock = threading.Lock()
+_face_stop = False
+
+
+def set_mood(mood):
+    global _mood
+    with _mood_lock:
+        _mood = mood if mood in FACE_MOODS else "neutral"
+
+
+def current_mood():
+    with _mood_lock:
+        return _mood
+
+
+def _face_loop():
+    next_blink = time.time() + random.uniform(2.5, 6.0)
+    next_glance = time.time() + random.uniform(4.0, 9.0)
+    look_x = 0
+    drawn = None
+    last_draw = 0.0
+
+    while not _face_stop:
+        now = time.time()
+        mood = current_mood()
+        try:
+            if now >= next_blink and mood != "sleepy":
+                for shut in (0.55, 0.95, 0.55):
+                    link.show_face(mood, blink=shut, look_x=look_x)
+                    time.sleep(0.045)
+                next_blink = now + random.uniform(2.5, 6.0)
+                drawn = None
+
+            if now >= next_glance:
+                look_x = random.choice([-10, -6, 0, 0, 0, 6, 10])
+                next_glance = now + random.uniform(4.0, 9.0)
+
+            # Redraw on any change, and regularly regardless -- he wipes
+            # his own screen if 30 seconds pass without a new picture.
+            if (mood, look_x) != drawn or now - last_draw > 4.0:
+                link.show_face(mood, look_x=look_x)
+                drawn = (mood, look_x)
+                last_draw = now
+        except OSError:
+            return  # socket closed on the way out
+
+        time.sleep(0.1)
 
 
 # ---- Voice companion mode -- you talk to him out loud, he talks back.
@@ -966,6 +1241,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/":
             self._send_bytes(PAGE.encode("utf-8"), "text/html; charset=utf-8")
+        elif path == "/api/mood":
+            self._send_json({"ok": True, "mood": current_mood()})
         elif path == "/api/ai/log":
             with _ai_log_lock:
                 lines = list(_ai_log)
@@ -1077,6 +1354,21 @@ PAGE = """<!doctype html>
   }
   .chat button { flex: 0 0 auto; padding: 12px 18px; background: #2a5a8a; }
   .label { font-size: 12px; color: #999; text-align: center; margin: -4px 0 2px; }
+  /* His face, mirrored from what's actually on his screen. */
+  #faceBox {
+    max-width: 480px; margin: 0 auto 4px; height: 92px; border-radius: 12px;
+    background: #05070a; border: 1px solid #333;
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+  }
+  .eye {
+    background: #46e0ff; border-radius: 14px;
+    width: 52px; height: 56px;
+    transition: width .18s, height .18s, border-radius .18s, transform .18s;
+  }
+  #moodLabel {
+    text-align: center; font-size: 12px; color: #777;
+    margin-bottom: 14px; letter-spacing: .08em; text-transform: uppercase;
+  }
   #aiBtn { background: #2a5a2a; }
   #aiBtn.running { background: #7a2020; }
   #micBtn { background: #2a4a7a; font-size: 17px; padding: 18px 8px; }
@@ -1098,6 +1390,12 @@ PAGE = """<!doctype html>
 <h1>Cozmo Control</h1>
 <img id="cam" src="/api/camera" alt="Cozmo's camera feed">
 <div id="status">Connecting...</div>
+
+<div id="faceBox">
+  <div class="eye" id="eyeL"></div>
+  <div class="eye" id="eyeR"></div>
+</div>
+<div id="moodLabel">neutral</div>
 
 <div class="panel">
   <div class="label">Talk to Cozmo out loud -- he listens, sees you, and answers back</div>
@@ -1220,6 +1518,48 @@ async function pollAiLog() {
 
 setInterval(pollAiLog, 3000);
 pollAiLog();
+
+// ---------- Mirror of the face that's actually on his screen, so you can
+// see his expression without leaning over to look at the robot.
+const EYE_SHAPES = {
+  neutral:   {w: 52, h: 56, r: 15, y: 0},
+  happy:     {w: 52, h: 46, r: 20, y: 3},
+  excited:   {w: 58, h: 66, r: 18, y: 0},
+  curious:   {w: 52, h: 56, r: 15, y: 0, uneven: 14},
+  sleepy:    {w: 52, h: 16, r: 8,  y: 14},
+  sad:       {w: 48, h: 40, r: 14, y: 8, tilt: -12},
+  annoyed:   {w: 52, h: 38, r: 10, y: 2, tilt: 12},
+  surprised: {w: 46, h: 66, r: 23, y: 0}
+};
+
+let shownMood = null;
+
+function paintFace(mood) {
+  if (mood === shownMood) return;
+  shownMood = mood;
+  const s = EYE_SHAPES[mood] || EYE_SHAPES.neutral;
+  const eyes = [document.getElementById('eyeL'), document.getElementById('eyeR')];
+  eyes.forEach((eye, i) => {
+    const h = (s.uneven && i === 0) ? s.h - s.uneven : s.h;
+    eye.style.width = s.w + 'px';
+    eye.style.height = h + 'px';
+    eye.style.borderRadius = s.r + 'px';
+    const tilt = s.tilt ? (i === 0 ? s.tilt : -s.tilt) : 0;
+    eye.style.transform = 'translateY(' + s.y + 'px) rotate(' + tilt + 'deg)';
+  });
+  document.getElementById('moodLabel').textContent = mood;
+}
+
+async function pollMood() {
+  try {
+    const res = await fetch('/api/mood');
+    const data = await res.json();
+    paintFace(data.mood);
+  } catch (e) { /* next poll will retry */ }
+}
+
+setInterval(pollMood, 1000);
+pollMood();
 
 // ---------- Voice: he listens through your microphone and answers out
 // loud. Both halves are built into the browser, so there's nothing extra
@@ -1410,6 +1750,12 @@ def main():
     camera_counter = _count_camera_packets(link)
     threading.Thread(target=_camera_loop, daemon=True).start()
 
+    # Wake his face up before anything else -- eyes on the screen are the
+    # clearest sign that the connection is actually live.
+    set_mood("happy")
+    threading.Thread(target=_face_loop, daemon=True).start()
+    link.lights("green")
+
     # A port left over from a previous run that didn't fully release
     # would otherwise crash this with "Address already in use" -- try
     # nearby ports instead of giving up on the first one.
@@ -1443,8 +1789,11 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        global _face_stop
         _camera_stop = True
+        _face_stop = True
         _ai_stop_event.set()
+        time.sleep(0.2)  # let the face loop finish its current draw
         server.shutdown()
         server.server_close()
         link.disconnect()
