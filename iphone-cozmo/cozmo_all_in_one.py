@@ -43,9 +43,17 @@ chat all work fine that way. "AI Mode" is the only part that needs real
 internet (it calls Claude), so for that you need a second connection at
 the same time -- an Ethernet cable plugged in, or a second Wi-Fi adapter.
 
-For AI Mode you also need an Anthropic API key (from
-https://console.anthropic.com -- it's pay-as-you-go, real money, usually
-a fraction of a cent per decision). Paste it into the API_KEY line below.
+HIS BRAIN: no API key, no account, no subscription. He thinks using
+Ollama, which runs on this computer. Set it up once:
+   1. Install Ollama from https://ollama.com
+   2. Open Command Prompt and run:  ollama pull llama3.2
+      (or "ollama pull llava" so he can SEE through his camera too)
+Leave Ollama running and he finds it by himself.
+
+Because his brain is on this computer, talking to him and AI Mode need
+NO internet at all -- which is just as well, since Cozmo's Wi-Fi has
+none. The only part that still wants internet is the speech recognition
+in the browser, which is Chrome's.
 
 =====================================================================
 IF THE CAMERA STAYS BLACK
@@ -797,11 +805,36 @@ def think(link, text):
 # ===================================================================
 # PASTE YOUR ANTHROPIC API KEY HERE
 # ===================================================================
-API_KEY = os.environ.get("ANTHROPIC_API_KEY", "PASTE_YOUR_KEY_HERE")
+# ===================================================================
+# HIS BRAIN
+# ===================================================================
+# By default he thinks using Ollama, which runs on THIS computer. It's
+# free, there's no account and no API key, and because it's local he
+# doesn't need any internet at all -- which matters, because Cozmo's
+# own Wi-Fi doesn't have any.
+#
+# To set it up, once:
+#   1. Install Ollama from https://ollama.com  (Windows installer)
+#   2. Open Command Prompt and run:  ollama pull llama3.2
+#      (or "ollama pull llava" if you want him to actually SEE through
+#       his camera -- llava understands pictures, llama3.2 only text)
+# That's it. Leave Ollama running and he'll find it by himself.
+OLLAMA_URL = "http://localhost:11434"
+OLLAMA_MODEL = ""      # blank = pick whatever you have installed
+
+# Optional: if you'd rather use Claude and you have a paid API key from
+# https://console.anthropic.com, paste it here and it'll be used instead
+# of Ollama. Leaving this alone is completely fine -- Ollama needs no key.
+API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 MODEL = "claude-opus-5"
 API_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
+
+# Models that can actually look at a picture. Anything else is text-only,
+# and he'll talk perfectly well but won't see through his camera.
+VISION_MODELS = ("llava", "bakllava", "moondream", "vision", "minicpm-v",
+                 "qwen2-vl", "qwen2.5vl", "gemma3", "granite3.2-vision")
 
 # How long to wait between autonomous decisions. Shorter feels livelier,
 # but costs more (one Claude call, with an image, per tick).
@@ -936,6 +969,185 @@ def call_claude(messages, system=None, max_tokens=512):
         ) from e
 
 
+# ---------- Ollama: his brain, running on this computer ----------
+# Ollama is asked for a small JSON object rather than given a tool list,
+# because tool-calling support varies a lot between local models while
+# "reply in JSON" works with essentially all of them. Ollama can enforce
+# valid JSON for us, so there's nothing to parse defensively.
+
+MOVES = {
+    "none": None,
+    "forward": ("drive", "forward"),
+    "backward": ("drive", "backward"),
+    "left": ("turn", "left"),
+    "right": ("turn", "right"),
+    "head_up": ("head", "up"),
+    "head_down": ("head", "down"),
+    "head_center": ("head", "center"),
+    "lift_up": ("lift", "up"),
+    "lift_down": ("lift", "down"),
+    "lights_green": ("lights", "green"),
+    "lights_red": ("lights", "red"),
+    "lights_blue": ("lights", "blue"),
+    "lights_white": ("lights", "white"),
+    "lights_off": ("lights", "off"),
+}
+
+JSON_RULES = (
+    "\n\nReply with ONLY a JSON object, nothing else, in exactly this shape:\n"
+    '{"say": "<what you say out loud>", "mood": "<one of: '
+    + ", ".join(sorted(FACE_MOODS)) + '>", "move": "<one of: '
+    + ", ".join(MOVES) + '>"}\n'
+    'Keep "say" to one short sentence. Pick the "mood" that matches how '
+    'you feel -- it changes your face. Use "move" to act it out with your '
+    'body, or "none" if nothing physical fits.'
+)
+
+
+def _ollama_get(path, timeout=3.0):
+    with urllib.request.urlopen(OLLAMA_URL + path, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def ollama_models():
+    """Names of the models installed in Ollama, or [] if it isn't running."""
+    try:
+        return [m["name"] for m in _ollama_get("/api/tags").get("models", [])]
+    except (urllib.error.URLError, OSError, ValueError, KeyError):
+        return []
+
+
+def pick_ollama_model():
+    """Whichever installed model to use -- one that can see, if there is
+    one, since that's what makes his camera worth anything."""
+    if OLLAMA_MODEL:
+        return OLLAMA_MODEL
+    installed = ollama_models()
+    for name in installed:
+        if any(v in name.lower() for v in VISION_MODELS):
+            return name
+    return installed[0] if installed else ""
+
+
+def model_can_see(name):
+    return any(v in (name or "").lower() for v in VISION_MODELS)
+
+
+def ask_ollama(history, user_text, jpeg, system, model):
+    """One exchange with a local model. Returns (say, mood, move)."""
+    messages = [{"role": "system", "content": system + JSON_RULES}]
+    for turn in history:
+        messages.append({"role": turn["role"], "content": turn["content"]})
+
+    current = {"role": "user", "content": user_text}
+    if jpeg and model_can_see(model):
+        current["images"] = [base64.b64encode(jpeg).decode("ascii")]
+    messages.append(current)
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "format": "json",
+        "options": {"temperature": 0.8, "num_predict": 200},
+    }
+    req = urllib.request.Request(
+        OLLAMA_URL + "/api/chat", data=json.dumps(payload).encode("utf-8"),
+        method="POST", headers={"content-type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.URLError as e:
+        raise RuntimeError(
+            "Can't reach Ollama on this computer. Install it from "
+            "https://ollama.com, then run 'ollama pull llama3.2' once, and "
+            f"leave it running. ({e.reason})") from e
+
+    content = (body.get("message") or {}).get("content", "")
+    try:
+        parsed = json.loads(content)
+    except ValueError:
+        # Shouldn't happen with format=json, but a stray model might still
+        # wrap it in prose -- take what he said and carry on unbothered.
+        return content.strip()[:200] or "...", "neutral", "none"
+
+    say = str(parsed.get("say") or "").strip() or "..."
+    mood = str(parsed.get("mood") or "neutral").strip().lower()
+    move = str(parsed.get("move") or "none").strip().lower()
+    return say, (mood if mood in FACE_MOODS else "neutral"), (move if move in MOVES else "none")
+
+
+def apply_move(link, move):
+    """Carry out one of the MOVES. Returns a description, or None."""
+    pair = MOVES.get(move)
+    if not pair:
+        return None
+    action, argument = pair
+    if action == "drive":
+        link.drive(argument)
+        return f"Driving {argument}."
+    if action == "turn":
+        link.turn(argument)
+        return f"Turning {argument}."
+    if action == "head":
+        link.head(argument)
+        return f"Looking {argument}."
+    if action == "lift":
+        link.lift(argument)
+        return f"Lift {argument}."
+    if action == "lights":
+        link.lights(argument)
+        return f"Lights -> {argument}."
+    return None
+
+
+def brain_name():
+    """Which brain will be used, as something printable."""
+    if API_KEY and API_KEY != "PASTE_YOUR_KEY_HERE":
+        return "claude"
+    model = pick_ollama_model()
+    return f"ollama:{model}" if model else ""
+
+
+def brain_think(history, user_text, jpeg, system):
+    """Ask whichever brain is available. Returns (say, mood, move_desc)."""
+    if API_KEY and API_KEY != "PASTE_YOUR_KEY_HERE":
+        return _think_with_claude(history, user_text, jpeg, system)
+
+    model = pick_ollama_model()
+    if not model:
+        raise RuntimeError(
+            "No brain available. Install Ollama from https://ollama.com, "
+            "then run 'ollama pull llama3.2' once in Command Prompt. "
+            "(It's free and needs no account -- unlike an API key.)")
+
+    say, mood, move = ask_ollama(history, user_text, jpeg, system, model)
+    set_mood(mood)
+    return say, mood, apply_move(link, move)
+
+
+def _think_with_claude(history, user_text, jpeg, system):
+    turn = [{"type": "text", "text": user_text}]
+    if jpeg:
+        turn.insert(0, {
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/jpeg",
+                       "data": base64.b64encode(jpeg).decode("ascii")},
+        })
+    messages = [{"role": t["role"], "content": t["content"]} for t in history]
+    messages.append({"role": "user", "content": turn})
+
+    response = call_claude(messages, system=system, max_tokens=300)
+    say = ""
+    move_desc = None
+    for block in response.get("content", []):
+        if block.get("type") == "text" and block["text"].strip():
+            say = block["text"].strip()
+        elif block.get("type") == "tool_use":
+            move_desc = run_tool(link, block["name"], block.get("input", {}))
+    return (say or "..."), current_mood(), move_desc
+
+
 def run_tool(link, name, tool_input):
     if name == "drive":
         link.drive(tool_input["direction"])
@@ -1047,46 +1259,21 @@ MEMORY_TURNS = 16
 
 
 def talk_to_cozmo(text):
-    """One spoken exchange: what the person said (plus what Cozmo can see
-    right now) goes to Claude, and back comes something to say out loud and
-    possibly a movement to act it out. Returns (spoken_reply, action)."""
-    if not API_KEY or API_KEY == "PASTE_YOUR_KEY_HERE":
-        raise ValueError(
-            "No Anthropic API key set. Open this file, find the API_KEY line "
-            "near the top, and paste your key in (get one at "
-            "https://console.anthropic.com).")
-
+    """One spoken exchange: what the person said, plus what he can see
+    right now, goes to his brain; back comes something to say out loud, an
+    expression, and maybe a move. Returns (spoken_reply, action)."""
+    # The camera frame rides along with the newest message only. Attaching
+    # it to every remembered turn would grow each request without telling
+    # him anything -- he only ever needs to see *now*.
     with _latest_jpeg_lock:
         jpeg = _latest_jpeg
 
-    # The camera frame rides along with the newest message only. Attaching
-    # an image to every remembered turn would multiply the cost of a long
-    # conversation for almost no benefit -- he only needs to see *now*.
-    turn = [{"type": "text", "text": text}]
-    if jpeg:
-        turn.insert(0, {
-            "type": "image",
-            "source": {"type": "base64", "media_type": "image/jpeg",
-                       "data": base64.b64encode(jpeg).decode("ascii")},
-        })
-
     with _conversation_lock:
-        messages = list(_conversation) + [{"role": "user", "content": turn}]
+        history = list(_conversation)
 
-    response = call_claude(messages, system=COMPANION_PROMPT, max_tokens=300)
+    spoken, _mood_used, action = brain_think(history, text, jpeg, COMPANION_PROMPT)
 
-    spoken = ""
-    action = None
-    for block in response.get("content", []):
-        if block.get("type") == "text" and block["text"].strip():
-            spoken = block["text"].strip()
-        elif block.get("type") == "tool_use":
-            action = run_tool(link, block["name"], block.get("input", {}))
-
-    if not spoken:
-        spoken = "Mm-hmm!"
-
-    # Remember this exchange as plain text -- dropping the image keeps the
+    # Remember the exchange as plain text -- dropping the image keeps the
     # stored history small, and he's already said whatever he saw in it.
     with _conversation_lock:
         _conversation.append({"role": "user", "content": text})
@@ -1135,26 +1322,13 @@ def _ai_loop():
             # updating fine.
             with _latest_jpeg_lock:
                 jpeg = _latest_jpeg
-            content = []
-            if jpeg:
-                content.append({
-                    "type": "image",
-                    "source": {"type": "base64", "media_type": "image/jpeg",
-                               "data": base64.b64encode(jpeg).decode("ascii")},
-                })
-                content.append({"type": "text", "text": "This is what you see right now. What do you do?"})
-            else:
-                content.append({"type": "text", "text":
-                                 "Your camera frame didn't arrive in time this turn. What do you do?"})
 
-            response = call_claude([{"role": "user", "content": content}])
-            thought = None
-            action_desc = None
-            for block in response.get("content", []):
-                if block.get("type") == "text" and block["text"].strip():
-                    thought = block["text"].strip()
-                elif block.get("type") == "tool_use":
-                    action_desc = run_tool(link, block["name"], block.get("input", {}))
+            if jpeg:
+                nudge = "This is what you see right now. What do you do?"
+            else:
+                nudge = ("You can't see anything this turn. What do you do?")
+
+            thought, _mood_used, action_desc = brain_think([], nudge, jpeg, SYSTEM_PROMPT)
             _ai_log_line(" -- ".join(x for x in (action_desc, thought) if x) or "(no action)")
         except RuntimeError as e:
             _ai_log_line(str(e))
@@ -1167,11 +1341,11 @@ def _ai_start():
     global _ai_thread
     if _ai_running:
         return "Autonomous AI mode is already running."
-    if not API_KEY or API_KEY == "PASTE_YOUR_KEY_HERE":
+    if not brain_name():
         raise ValueError(
-            "No Anthropic API key set. Open this file, find the API_KEY line near "
-            "the top, and paste your key in (get one at "
-            "https://console.anthropic.com).")
+            "No brain available. Install Ollama from https://ollama.com, then "
+            "run 'ollama pull llama3.2' once in Command Prompt, and leave "
+            "Ollama running. It's free and needs no account.")
     _ai_stop_event.clear()
     _ai_thread = threading.Thread(target=_ai_loop, daemon=True)
     _ai_thread.start()
@@ -1775,6 +1949,23 @@ def main():
         return
 
     _report_camera_status(camera_counter)
+
+    print()
+    brain = brain_name()
+    if not brain:
+        print("His brain isn't set up yet, so talking and AI Mode won't work.")
+        print("  Install Ollama from https://ollama.com, then run this once:")
+        print("      ollama pull llama3.2")
+        print("  (free, no account, no API key -- and it needs no internet")
+        print("   once installed). Everything else works without it.")
+    elif brain.startswith("ollama:"):
+        model = brain.split(":", 1)[1]
+        print(f"Brain: Ollama, using {model} -- running on this computer, no internet needed.")
+        if not model_can_see(model):
+            print(f"  ({model} is text-only, so he can talk but not see. For eyes,")
+            print("   run 'ollama pull llava' and restart this.)")
+    else:
+        print("Brain: Claude (using your API key).")
 
     print()
     print("=" * 60)
