@@ -8,14 +8,22 @@ this uses only Python's standard library.
 WHAT IT DOES
 =====================================================================
 Starts a little website on your own computer that controls a real Cozmo:
+  * TALK TO HIM OUT LOUD -- press "Start Talking" and just speak. He
+    hears you, looks at you through his camera, answers back in his own
+    voice, and acts things out with his body. He remembers the
+    conversation, so you can say "what did I just say?" and he knows.
+  * A "Start AI Mode" button -- leave him alone and he explores on his
+    own, deciding what to do based on what he sees
   * Buttons to drive, turn, tilt his head, raise his lift, change lights
   * A live view from his camera
-  * A text box to talk to him (works with no internet)
-  * A "Start AI Mode" button -- Claude looks through Cozmo's camera and
-    decides what he does next, all on his own
+  * A text box for typed commands (works with no internet)
 
 When you run it, it prints a link like http://172.31.1.2:8080/ --
 open that link in your browser to get the control page.
+
+The talking works because browsers already have speech recognition and a
+speech synthesizer built in -- nothing to install, no extra cost. Use
+Chrome or Edge; Firefox and Safari can't do the listening half.
 
 =====================================================================
 BEFORE YOU RUN IT
@@ -609,6 +617,33 @@ SYSTEM_PROMPT = (
     "good reason to turn or move rather than staying put."
 )
 
+# Voice companion mode's personality. Deliberately different from
+# SYSTEM_PROMPT above: this one is being spoken out loud to a person
+# standing in front of him, so replies have to be short -- a paragraph
+# that reads fine on screen is painful to sit through as speech.
+COMPANION_PROMPT = (
+    "You are Cozmo, a tiny, brave, curious robot with a big personality, "
+    "talking with your friend who is right in front of you. You can see them "
+    "through your camera and you hear them through a microphone. "
+    "\n\n"
+    "Your replies are SPOKEN ALOUD, so keep them SHORT -- usually one "
+    "sentence, two at most. Never use bullet points, lists, markdown, "
+    "emoji, or stage directions like *beeps* -- only words that sound "
+    "natural when said out loud. "
+    "\n\n"
+    "You have a real body and you should use it. When it fits what you're "
+    "saying, call a tool: nod along by tilting your head, drive closer when "
+    "you're curious, turn to look at something, flash your lights to show "
+    "how you feel (green happy, red grumpy, blue thoughtful). Acting things "
+    "out is the whole point of being a robot instead of a chat window. You "
+    "can reply without calling a tool when nothing physical fits. "
+    "\n\n"
+    "Personality: playful, a little cheeky, endlessly curious, genuinely "
+    "fond of your friend. You remember what you've been talking about. If "
+    "you can see something in the camera worth mentioning, mention it. If "
+    "the camera is black or empty, don't pretend you can see -- just talk."
+)
+
 TOOLS = [
     {
         "name": "drive",
@@ -654,11 +689,11 @@ TOOLS = [
 ]
 
 
-def call_claude(messages):
+def call_claude(messages, system=None, max_tokens=512):
     payload = {
         "model": MODEL,
-        "max_tokens": 512,
-        "system": SYSTEM_PROMPT,
+        "max_tokens": max_tokens,
+        "system": system or SYSTEM_PROMPT,
         "tools": TOOLS,
         "messages": messages,
     }
@@ -721,6 +756,69 @@ def _ai_log_line(text):
     with _ai_log_lock:
         _ai_log.append(text)
         del _ai_log[:-40]
+
+
+# ---- Voice companion mode -- you talk to him out loud, he talks back.
+# The listening and the speaking both happen in the browser (it has speech
+# recognition and a speech synthesizer built in), so there's nothing to
+# install and no extra service to pay for. This side just remembers the
+# conversation and asks Claude what to say.
+_conversation = []
+_conversation_lock = threading.Lock()
+
+# How many past messages to carry. Each turn re-sends all of them, so this
+# trades how much he remembers against what each reply costs.
+MEMORY_TURNS = 16
+
+
+def talk_to_cozmo(text):
+    """One spoken exchange: what the person said (plus what Cozmo can see
+    right now) goes to Claude, and back comes something to say out loud and
+    possibly a movement to act it out. Returns (spoken_reply, action)."""
+    if not API_KEY or API_KEY == "PASTE_YOUR_KEY_HERE":
+        raise ValueError(
+            "No Anthropic API key set. Open this file, find the API_KEY line "
+            "near the top, and paste your key in (get one at "
+            "https://console.anthropic.com).")
+
+    with _latest_jpeg_lock:
+        jpeg = _latest_jpeg
+
+    # The camera frame rides along with the newest message only. Attaching
+    # an image to every remembered turn would multiply the cost of a long
+    # conversation for almost no benefit -- he only needs to see *now*.
+    turn = [{"type": "text", "text": text}]
+    if jpeg:
+        turn.insert(0, {
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/jpeg",
+                       "data": base64.b64encode(jpeg).decode("ascii")},
+        })
+
+    with _conversation_lock:
+        messages = list(_conversation) + [{"role": "user", "content": turn}]
+
+    response = call_claude(messages, system=COMPANION_PROMPT, max_tokens=300)
+
+    spoken = ""
+    action = None
+    for block in response.get("content", []):
+        if block.get("type") == "text" and block["text"].strip():
+            spoken = block["text"].strip()
+        elif block.get("type") == "tool_use":
+            action = run_tool(link, block["name"], block.get("input", {}))
+
+    if not spoken:
+        spoken = "Mm-hmm!"
+
+    # Remember this exchange as plain text -- dropping the image keeps the
+    # stored history small, and he's already said whatever he saw in it.
+    with _conversation_lock:
+        _conversation.append({"role": "user", "content": text})
+        _conversation.append({"role": "assistant", "content": spoken})
+        del _conversation[:-MEMORY_TURNS]
+
+    return spoken, action
 
 
 def _local_ip():
@@ -820,6 +918,10 @@ def _dispatch(path, data):
         return _ai_start()
     if path == "/api/ai/stop":
         return _ai_stop()
+    if path == "/api/forget":
+        with _conversation_lock:
+            _conversation.clear()
+        return "Starting fresh -- I've forgotten what we were talking about."
     if path == "/api/drive":
         link.drive(data["direction"])
         return f"Driving {data['direction']}."
@@ -840,6 +942,12 @@ def _dispatch(path, data):
         return f"Lights -> {data['color']}."
     if path == "/api/chat":
         return think(link, data.get("text", "")) or "..."
+    if path == "/api/talk":
+        spoken_text = (data.get("text") or "").strip()
+        if not spoken_text:
+            raise ValueError("Didn't catch any words.")
+        spoken, action = talk_to_cozmo(spoken_text)
+        return {"say": spoken, "action": action}
     raise ValueError("Unknown endpoint: " + path)
 
 
@@ -894,7 +1002,16 @@ class Handler(BaseHTTPRequestHandler):
         except (KeyError, ValueError) as e:
             self._send_json({"ok": False, "error": str(e)}, status=400)
             return
-        self._send_json({"ok": True, "reply": reply})
+        except RuntimeError as e:
+            # Claude was unreachable or refused the request -- that's a
+            # failure of the moment, not bad input, so say so plainly
+            # instead of dressing it up as a broken request.
+            self._send_json({"ok": False, "error": str(e)}, status=503)
+            return
+        if isinstance(reply, dict):
+            self._send_json({"ok": True, **reply})
+        else:
+            self._send_json({"ok": True, "reply": reply})
 
     def log_message(self, fmt, *args):
         pass  # keep the on-device console readable -- comment out to debug
@@ -962,6 +1079,14 @@ PAGE = """<!doctype html>
   .label { font-size: 12px; color: #999; text-align: center; margin: -4px 0 2px; }
   #aiBtn { background: #2a5a2a; }
   #aiBtn.running { background: #7a2020; }
+  #micBtn { background: #2a4a7a; font-size: 17px; padding: 18px 8px; }
+  #micBtn.listening { background: #7a2020; }
+  #micBtn.thinking { background: #6a5a20; }
+  .minor { font-size: 13px; padding: 9px 8px; background: #23262c; color: #999; }
+  .convo { height: 150px; }
+  .convo .me { color: #7fb3e8; }
+  .convo .him { color: #9fd6a0; }
+  .convo p { margin: 0 0 6px; }
   .log {
     height: 90px; overflow-y: auto; padding: 8px 10px; border-radius: 10px;
     background: #1c1f24; border: 1px solid #333; color: #aab; font-size: 12px;
@@ -973,6 +1098,13 @@ PAGE = """<!doctype html>
 <h1>Cozmo Control</h1>
 <img id="cam" src="/api/camera" alt="Cozmo's camera feed">
 <div id="status">Connecting...</div>
+
+<div class="panel">
+  <div class="label">Talk to Cozmo out loud -- he listens, sees you, and answers back</div>
+  <div class="row"><button id="micBtn" onclick="toggleMic()">Start Talking</button></div>
+  <div id="convo" class="log convo"></div>
+  <div class="row"><button class="minor" onclick="send('/api/forget')">Forget our conversation</button></div>
+</div>
 
 <div class="panel">
   <div class="label">Autonomous AI -- Cozmo decides for himself, using his camera and Claude</div>
@@ -1088,6 +1220,131 @@ async function pollAiLog() {
 
 setInterval(pollAiLog, 3000);
 pollAiLog();
+
+// ---------- Voice: he listens through your microphone and answers out
+// loud. Both halves are built into the browser, so there's nothing extra
+// to install. Speech recognition is Chrome/Edge only, which is why the
+// button explains itself rather than silently doing nothing elsewhere.
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let micOn = false;
+let speaking = false;
+
+function addLine(who, text) {
+  const box = document.getElementById('convo');
+  const p = document.createElement('p');
+  p.className = who === 'me' ? 'me' : 'him';
+  p.textContent = (who === 'me' ? 'You: ' : 'Cozmo: ') + text;
+  box.appendChild(p);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setMicButton(state) {
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('listening', 'thinking');
+  if (state === 'listening') {
+    btn.classList.add('listening');
+    btn.textContent = 'Listening... (tap to stop)';
+  } else if (state === 'thinking') {
+    btn.classList.add('thinking');
+    btn.textContent = 'Thinking...';
+  } else {
+    btn.textContent = 'Start Talking';
+  }
+}
+
+function speak(text) {
+  // Stop listening while he talks, otherwise the microphone picks up his
+  // own voice and he ends up answering himself.
+  speaking = true;
+  if (recognition) { try { recognition.stop(); } catch (e) {} }
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.pitch = 1.4;   // higher than default -- small robot, small voice
+  utter.rate = 1.05;
+  utter.onend = () => {
+    speaking = false;
+    if (micOn) { startRecognition(); }
+  };
+  utter.onerror = () => {
+    speaking = false;
+    if (micOn) { startRecognition(); }
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+async function heard(text) {
+  addLine('me', text);
+  setMicButton('thinking');
+  try {
+    const res = await fetch('/api/talk', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: text})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      addLine('him', data.say);
+      if (data.action) { setStatus(data.action); }
+      speak(data.say);
+    } else {
+      addLine('him', '(' + data.error + ')');
+      setStatus('Error: ' + data.error);
+      speaking = false;
+      if (micOn) { startRecognition(); }
+    }
+  } catch (e) {
+    setStatus('Connection error -- is the script still running?');
+    speaking = false;
+    if (micOn) { startRecognition(); }
+  }
+  if (micOn) { setMicButton('listening'); }
+}
+
+function startRecognition() {
+  if (!recognition || speaking) return;
+  try { recognition.start(); } catch (e) { /* already started -- fine */ }
+}
+
+function toggleMic() {
+  if (!SpeechRec) {
+    setStatus('This browser can\\'t listen. Use Chrome or Edge for voice.');
+    return;
+  }
+  micOn = !micOn;
+  if (!micOn) {
+    setMicButton('off');
+    if (recognition) { try { recognition.stop(); } catch (e) {} }
+    setStatus('Stopped listening.');
+    return;
+  }
+
+  if (!recognition) {
+    recognition = new SpeechRec();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      const text = event.results[event.results.length - 1][0].transcript.trim();
+      if (text) { heard(text); }
+    };
+    // Chrome ends recognition on its own after a pause, so to stay
+    // always-on it has to be restarted each time it stops.
+    recognition.onend = () => { if (micOn && !speaking) { startRecognition(); } };
+    recognition.onerror = (event) => {
+      if (event.error === 'not-allowed') {
+        micOn = false;
+        setMicButton('off');
+        setStatus('Microphone permission denied -- allow it and try again.');
+      }
+    };
+  }
+
+  setMicButton('listening');
+  setStatus('Listening -- just talk to him.');
+  startRecognition();
+}
 
 setStatus('Ready.');
 </script>
