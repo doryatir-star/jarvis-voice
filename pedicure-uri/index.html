@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פדיקור של אורי</title>
+<meta name="description" content="פדיקור של אורי - פדיקור רגליים יבש, קביעת תור בקלות">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <div class="logo">
+      <span class="logo-icon">💅</span>
+      <span class="logo-text">פדיקור של אורי</span>
+    </div>
+    <nav class="nav">
+      <a href="#services">שירותים</a>
+      <a href="#hours">שעות פתיחה</a>
+      <a href="#booking">קביעת תור</a>
+      <a href="#contact">יצירת קשר</a>
+    </nav>
+    <a href="#booking" class="btn btn-primary nav-cta">קביעת תור</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container hero-inner">
+    <p class="hero-eyebrow">טיפוח כפות רגליים במקצועיות ובניקיון מלא</p>
+    <h1>פדיקור של אורי</h1>
+    <p class="hero-sub">פינוק לכפות הרגליים שלך, בקביעת תור נוחה ובמחיר הוגן</p>
+    <div class="hero-actions">
+      <a href="#booking" class="btn btn-primary">קביעת תור עכשיו</a>
+      <a href="tel:0527338868" class="btn btn-outline">התקשרו: 052-733-8868</a>
+    </div>
+  </div>
+</section>
+
+<main>
+
+  <section id="services" class="section">
+    <div class="container">
+      <h2 class="section-title">השירות שלנו</h2>
+      <p class="section-sub">טיפול פדיקור יבש מקצועי, ללא השריה במים, שומר על היגיינה מרבית</p>
+      <div class="services-grid">
+        <div class="service-card">
+          <div class="service-icon">🦶</div>
+          <h3>פדיקור רגליים יבש</h3>
+          <p class="service-desc">הסרת עור קשה, טיפוח ציפורניים, וגימור מוקפד - הכל בטכניקה יבשה ונקייה</p>
+          <div class="service-price">₪50</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="hours" class="section section-alt">
+    <div class="container">
+      <h2 class="section-title">מערכת שעות</h2>
+      <p class="section-sub">אלו הימים והשעות בהם ניתן לקבוע תור</p>
+      <div class="hours-table-wrap">
+        <table class="hours-table" id="hoursTable">
+          <thead>
+            <tr>
+              <th>יום</th>
+              <th>שעות</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-day="0"><td>ראשון</td><td>16:30 - 18:00</td></tr>
+            <tr data-day="1"><td>שני</td><td>16:30 - 18:00</td></tr>
+            <tr data-day="2"><td>שלישי</td><td>16:30 - 18:00</td></tr>
+            <tr data-day="3"><td>רביעי</td><td>16:30 - 18:00</td></tr>
+            <tr data-day="4"><td>חמישי</td><td>16:30 - 18:00</td></tr>
+            <tr data-day="5"><td>שישי</td><td>11:00 - 13:00</td></tr>
+            <tr data-day="6" class="closed-row"><td>שבת</td><td>סגור</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="booking" class="section">
+    <div class="container">
+      <h2 class="section-title">קביעת תור</h2>
+      <p class="section-sub">מלאו את הפרטים ונחזור אליכם, או שלחו בקשה מיידית בוואטסאפ</p>
+
+      <form class="booking-form" id="bookingForm">
+        <div class="form-row">
+          <label for="name">שם מלא</label>
+          <input type="text" id="name" name="name" placeholder="השם שלך" required>
+        </div>
+
+        <div class="form-row">
+          <label for="phone">טלפון</label>
+          <input type="tel" id="phone" name="phone" placeholder="05X-XXXXXXX" required>
+        </div>
+
+        <div class="form-row form-row-split">
+          <div>
+            <label for="day">יום מבוקש</label>
+            <select id="day" name="day" required>
+              <option value="" disabled selected>בחר/י יום</option>
+              <option value="ראשון">ראשון (16:30-18:00)</option>
+              <option value="שני">שני (16:30-18:00)</option>
+              <option value="שלישי">שלישי (16:30-18:00)</option>
+              <option value="רביעי">רביעי (16:30-18:00)</option>
+              <option value="חמישי">חמישי (16:30-18:00)</option>
+              <option value="שישי">שישי (11:00-13:00)</option>
+            </select>
+          </div>
+          <div>
+            <label for="time">שעה מבוקשת</label>
+            <select id="time" name="time" required>
+              <option value="" disabled selected>קודם בחר/י יום</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="notes">הערות (לא חובה)</label>
+          <textarea id="notes" name="notes" rows="3" placeholder="פרטים נוספים לגבי התור..."></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block">שליחת בקשה בוואטסאפ</button>
+        </div>
+        <p class="form-hint">הלחיצה תפתח את וואטסאפ עם הודעה מוכנה לשליחה למספר 052-733-8868</p>
+      </form>
+    </div>
+  </section>
+
+  <section id="contact" class="section section-alt">
+    <div class="container">
+      <h2 class="section-title">יצירת קשר</h2>
+      <div class="contact-grid">
+        <a href="tel:0527338868" class="contact-card">
+          <div class="contact-icon">📞</div>
+          <div>
+            <div class="contact-label">טלפון</div>
+            <div class="contact-value">052-733-8868</div>
+          </div>
+        </a>
+        <a href="https://wa.me/972527338868" target="_blank" rel="noopener" class="contact-card">
+          <div class="contact-icon">💬</div>
+          <div>
+            <div class="contact-label">וואטסאפ</div>
+            <div class="contact-value">שליחת הודעה</div>
+          </div>
+        </a>
+        <a href="mailto:oribo2345@gmail.com" class="contact-card">
+          <div class="contact-icon">✉️</div>
+          <div>
+            <div class="contact-label">מייל</div>
+            <div class="contact-value">oribo2345@gmail.com</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>פדיקור של אורי &copy; <span id="year"></span></p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
