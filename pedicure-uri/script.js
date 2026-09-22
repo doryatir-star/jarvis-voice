@@ -91,6 +91,17 @@
 
     var message = encodeURIComponent(lines.join('\n'));
     var url = 'https://wa.me/' + PHONE_INTL + '?text=' + message;
-    window.open(url, '_blank', 'noopener');
+
+    var fallback = document.getElementById('waFallback');
+    fallback.href = url;
+    fallback.hidden = false;
+
+    var link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   });
 })();
